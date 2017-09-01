@@ -10,3 +10,10 @@ message StoreChunk {
 message RetrieveFile {
     string fileName = 1;
 }
+
+message StorageMessageWrapper {
+    oneof msg {
+        StoreChunk storeChunkMsg = 1;
+        RetrieveFile retrieveFileMsg = 2;
+    }
+}

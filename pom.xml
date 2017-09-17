@@ -22,9 +22,9 @@
 
     <developers>
         <developer>
-            <name>Your Name Here</name>
-            <email>Email@email.com</email>
-            <url>Your website, github profile, etc</url>
+            <name>Mathieu Clement</name>
+            <email>mclement2@usfca.edu</email>
+            <url>www.cs.usfca.edu/~mclement2/</url>
             <organization>University of San Francisco</organization>
         </developer>
     </developers>
@@ -83,6 +83,11 @@
             <groupId>com.google.protobuf</groupId>
             <artifactId>protobuf-java</artifactId>
             <version>3.4.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <version>RELEASE</version>
         </dependency>
     </dependencies>
 

@@ -3,7 +3,7 @@ package edu.usfca.cs.dfs;
 import java.net.Socket;
 
 import com.google.protobuf.ByteString;
-
+import edu.usfca.cs.dfs.messages.*;
 
 public class Client {
     public static void main(String[] args)

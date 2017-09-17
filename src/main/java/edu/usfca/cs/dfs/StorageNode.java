@@ -1,5 +1,7 @@
 package edu.usfca.cs.dfs;
 
+import edu.usfca.cs.dfs.messages.StorageMessages;
+
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;

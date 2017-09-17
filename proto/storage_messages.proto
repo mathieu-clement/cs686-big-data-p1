@@ -1,5 +1,5 @@
 syntax = "proto3";
-option java_package = "edu.usfca.cs.dfs";
+option java_package = "edu.usfca.cs.dfs.messages";
 
 message StoreChunk {
     string fileName = 1;

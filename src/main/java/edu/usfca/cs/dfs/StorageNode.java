@@ -1,6 +1,6 @@
 package edu.usfca.cs.dfs;
 
-import edu.usfca.cs.dfs.messages.StorageMessages;
+import edu.usfca.cs.dfs.messages.Messages;
 
 import java.net.InetAddress;
 import java.net.ServerSocket;
@@ -24,12 +24,12 @@ public class StorageNode {
         System.out.println("Listening...");
         while (true) {
             Socket socket = srvSocket.accept();
-            StorageMessages.StorageMessageWrapper msgWrapper
-                = StorageMessages.StorageMessageWrapper.parseDelimitedFrom(
+            Messages.MessageWrapper msgWrapper
+                    = Messages.MessageWrapper.parseDelimitedFrom(
                         socket.getInputStream());
 
             if (msgWrapper.hasStoreChunkMsg()) {
-                StorageMessages.StoreChunk storeChunkMsg
+                Messages.StoreChunk storeChunkMsg
                     = msgWrapper.getStoreChunkMsg();
                 System.out.println("Storing file name: "
                         + storeChunkMsg.getFileName());

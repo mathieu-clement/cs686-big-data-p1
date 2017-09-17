@@ -1,9 +1,9 @@
 package edu.usfca.cs.dfs;
 
-import java.net.Socket;
-
 import com.google.protobuf.ByteString;
-import edu.usfca.cs.dfs.messages.*;
+import edu.usfca.cs.dfs.messages.Messages;
+
+import java.net.Socket;
 
 public class Client {
     public static void main(String[] args)
@@ -12,15 +12,15 @@ public class Client {
 
         ByteString data = ByteString.copyFromUtf8("Hello World!");
 
-        StorageMessages.StoreChunk storeChunkMsg
-            = StorageMessages.StoreChunk.newBuilder()
+        Messages.StoreChunk storeChunkMsg
+                = Messages.StoreChunk.newBuilder()
                 .setFileName("my_file.txt")
                 .setChunkId(3)
                 .setData(data)
                 .build();
 
-        StorageMessages.StorageMessageWrapper msgWrapper =
-            StorageMessages.StorageMessageWrapper.newBuilder()
+        Messages.MessageWrapper msgWrapper =
+                Messages.MessageWrapper.newBuilder()
                 .setStoreChunkMsg(storeChunkMsg)
                 .build();
 

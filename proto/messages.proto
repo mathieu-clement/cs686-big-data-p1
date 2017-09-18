@@ -7,13 +7,23 @@ message StoreChunk {
     bytes data = 3;
 }
 
-message RetrieveFile {
+message DownloadChunk {
+    int32 chunkId = 1;
+}
+
+message DownloadFile {
+    string fileName = 1;
+}
+
+message UploadFile {
     string fileName = 1;
 }
 
 message MessageWrapper {
     oneof msg {
         StoreChunk storeChunkMsg = 1;
-        RetrieveFile retrieveFileMsg = 2;
+        DownloadChunk downloadChunkMsg = 2;
+        DownloadFile downloadFileMsg = 3;
+        UploadFile uploadFileMsg = 4;
     }
 }

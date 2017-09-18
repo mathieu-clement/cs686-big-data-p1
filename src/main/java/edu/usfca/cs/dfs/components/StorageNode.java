@@ -25,14 +25,14 @@ public class StorageNode {
         }
         String hostname = getHostname();
         int port = Integer.parseInt(args[0]);
-        System.out.println("Starting storage node on " + hostname + "...");
+        System.out.println("Starting storage node on " + hostname + " port " + port + "...");
         new StorageNode(port).start();
     }
 
     public void start()
     throws Exception {
         srvSocket = new ServerSocket(port);
-        System.out.println("Listening...");
+        System.out.println("Listening on port " + port + "...");
         while (true) {
             Socket socket = srvSocket.accept();
             Messages.MessageWrapper msgWrapper

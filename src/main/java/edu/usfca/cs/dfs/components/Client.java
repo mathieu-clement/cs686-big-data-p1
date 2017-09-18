@@ -33,7 +33,7 @@ public class Client {
         Messages.StoreChunk storeChunkMsg
                 = Messages.StoreChunk.newBuilder()
                 .setFileName("my_file.txt")
-                .setChunkId(3)
+                .setSequenceNo(0)
                 .setData(data)
                 .build();
 

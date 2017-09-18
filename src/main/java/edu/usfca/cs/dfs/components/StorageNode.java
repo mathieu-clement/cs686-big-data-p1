@@ -1,6 +1,8 @@
 package edu.usfca.cs.dfs.components;
 
 import edu.usfca.cs.dfs.messages.Messages;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
 import java.net.ServerSocket;
@@ -8,6 +10,8 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 
 public class StorageNode {
+
+    private final static Logger logger = LoggerFactory.getLogger(StorageNode.class);
 
     private ServerSocket srvSocket;
 
@@ -25,14 +29,14 @@ public class StorageNode {
         }
         String hostname = getHostname();
         int port = Integer.parseInt(args[0]);
-        System.out.println("Starting storage node on " + hostname + " port " + port + "...");
+        logger.debug("Starting storage node on " + hostname + " port " + port + "...");
         new StorageNode(port).start();
     }
 
     public void start()
     throws Exception {
         srvSocket = new ServerSocket(port);
-        System.out.println("Listening on port " + port + "...");
+        logger.debug("Listening on port " + port + "...");
         while (true) {
             Socket socket = srvSocket.accept();
             Messages.MessageWrapper msgWrapper
@@ -42,8 +46,9 @@ public class StorageNode {
             if (msgWrapper.hasStoreChunkMsg()) {
                 Messages.StoreChunk storeChunkMsg
                     = msgWrapper.getStoreChunkMsg();
-                System.out.println("Storing file name: "
-                        + storeChunkMsg.getFileName());
+                logger.debug("Storing file name: "
+                        + storeChunkMsg.getFileName() + " received from " +
+                        socket.getRemoteSocketAddress().toString());
             }
         }
     }

@@ -8,7 +8,15 @@ import java.net.Socket;
 public class Client {
     public static void main(String[] args)
     throws Exception {
-        Socket sock = new Socket("localhost", 9999);
+        if (args.length != 2) {
+            System.err.println("Two arguments required: controller-address controller-listening-port");
+            System.exit(1);
+        }
+
+        String controllerAddr = args[0];
+        int controllerPort = Integer.parseInt(args[1]);
+
+        Socket sock = new Socket(controllerAddr, controllerPort);
 
         ByteString data = ByteString.copyFromUtf8("Hello World!");
 

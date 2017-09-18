@@ -11,16 +11,27 @@ public class StorageNode {
 
     private ServerSocket srvSocket;
 
+    private final int port;
+
+    public StorageNode(int port) {
+        this.port = port;
+    }
+
     public static void main(String[] args) 
     throws Exception {
+        if (args.length != 3) {
+            System.err.println("This program requires 3 arguments: storage-node-listening-port controller-address controller-listening-port");
+            System.exit(1);
+        }
         String hostname = getHostname();
+        int port = Integer.parseInt(args[0]);
         System.out.println("Starting storage node on " + hostname + "...");
-        new StorageNode().start();
+        new StorageNode(port).start();
     }
 
     public void start()
     throws Exception {
-        srvSocket = new ServerSocket(9999);
+        srvSocket = new ServerSocket(port);
         System.out.println("Listening...");
         while (true) {
             Socket socket = srvSocket.accept();

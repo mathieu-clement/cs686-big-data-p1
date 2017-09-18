@@ -1,4 +1,4 @@
-package edu.usfca.cs.dfs;
+package edu.usfca.cs.dfs.components;
 
 import com.google.protobuf.ByteString;
 import edu.usfca.cs.dfs.messages.Messages;

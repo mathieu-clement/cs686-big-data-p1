@@ -1,4 +1,4 @@
-package edu.usfca.cs.dfs;
+package edu.usfca.cs.dfs.components;
 
 import edu.usfca.cs.dfs.messages.Messages;
 

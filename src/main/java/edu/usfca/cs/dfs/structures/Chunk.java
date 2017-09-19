@@ -41,52 +41,57 @@ public class Chunk {
         return totalSize;
     }
 
-    private static Chunk[] doCreateChunksFromFile(File file, long fileSize, int numberOfChunks, int defaultChunkSize, String outputDirectory) throws IOException {
+    private static Chunk[] doCreateChunksFromFile(File file, long fileSize, int numberOfChunks, long defaultChunkSize, String outputDirectory) throws IOException {
         Chunk[] chunks = new Chunk[numberOfChunks];
         int lastSequenceNo = numberOfChunks - 1;
 
         FileInputStream fis = new FileInputStream(file);
-        int bufSize = 4096;
-        byte[] buf = new byte[bufSize];
 
-        for (int i = 0; i > lastSequenceNo; i++) {
+        for (int i = 0; i < lastSequenceNo; i++) {
             Path chunkLocalPath = makeChunkFilePath(file, i, outputDirectory);
             chunks[i] = new Chunk(file.getName(), i, defaultChunkSize, chunkLocalPath);
-
-            File chunkFile = Files.createFile(chunkLocalPath).toFile();
-            FileOutputStream fos = new FileOutputStream(chunkFile);
-
-            int numberOfBufferReads = calculateNumberOfBufferReads(defaultChunkSize, bufSize);
-            int lastJ = numberOfBufferReads - 1;
-            for (int j = 0; j < lastJ; j++) {
-                if (fis.read(buf) == -1) {
-                    throw new IllegalStateException("Not enough data to read from file " + file.getName());
-                }
-                fos.write(buf);
-            }
-
-            int lastBufReadSize = calculateLastBufferReadSizeForChunk(numberOfBufferReads, bufSize, defaultChunkSize);
-            byte[] lastBuf = new byte[lastBufReadSize];
-            if (fis.read(lastBuf, 0, lastBufReadSize) == -1) {
-                throw new IllegalStateException("Not enough data to read from file " + file.getName());
-            }
-            fos.write(lastBuf);
-            fos.close();
+            writeToChunkFile(fis, chunkLocalPath, defaultChunkSize);
         }
 
         long lastChunkSize = calculateLastChunkSize(numberOfChunks, defaultChunkSize, fileSize);
         Path lastChunkFilePath = makeChunkFilePath(file, lastSequenceNo, outputDirectory);
         chunks[lastSequenceNo] = new Chunk(file.getName(), lastSequenceNo, lastChunkSize, lastChunkFilePath);
+        writeToChunkFile(fis, lastChunkFilePath, lastChunkSize);
         return chunks;
+    }
+
+    private static void writeToChunkFile(FileInputStream fis, Path chunkFilePath, long chunkSize) throws IOException {
+        File chunkFile = Files.createFile(chunkFilePath).toFile();
+        FileOutputStream fos = new FileOutputStream(chunkFile);
+
+        int bufSize = 4096;
+        byte[] buf = new byte[bufSize];
+
+        int numberOfBufferReads = calculateNumberOfBufferReads(chunkSize, bufSize);
+        int lastJ = numberOfBufferReads - 1;
+        for (int j = 0; j < lastJ; j++) {
+            if (fis.read(buf) == -1) {
+                throw new IllegalStateException("Not enough data to read from file");
+            }
+            fos.write(buf);
+        }
+
+        int lastBufReadSize = calculateLastBufferReadSizeForChunk(numberOfBufferReads, bufSize, chunkSize);
+        byte[] lastBuf = new byte[lastBufReadSize];
+        if (fis.read(lastBuf, 0, lastBufReadSize) == -1) {
+            throw new IllegalStateException("Not enough data to read from file");
+        }
+        fos.write(lastBuf);
+        fos.close();
     }
 
     private static int calculateLastBufferReadSizeForChunk(int numberOfReads, int bufferSize, long chunkSize) {
         return (int) calculateLastChunkSize(numberOfReads, bufferSize, chunkSize);
     }
 
-    public static long calculateLastChunkSize(int numberOfChunks, int defaultChunkSize, long totalSize) {
+    static long calculateLastChunkSize(int numberOfChunks, long defaultChunkSize, long totalSize) {
         long lastChunkSize = defaultChunkSize;
-        int chunksCapacity = numberOfChunks * defaultChunkSize;
+        long chunksCapacity = numberOfChunks * defaultChunkSize;
         if (chunksCapacity > totalSize) {
             lastChunkSize = defaultChunkSize - (chunksCapacity - totalSize);
         }
@@ -97,7 +102,7 @@ public class Chunk {
         return calculateNumberOfChunks(chunkSize, bufferSize);
     }
 
-    public static int calculateNumberOfChunks(long totalSize, long chunkSize) {
+    static int calculateNumberOfChunks(long totalSize, long chunkSize) {
         int chunks = (int) (totalSize / chunkSize);
         if (totalSize % chunkSize != 0) {
             chunks++;

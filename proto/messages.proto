@@ -19,11 +19,17 @@ message UploadFile {
     string fileName = 1;
 }
 
+message Heartbeat {
+    string storageNodeHost = 1;
+    int32 storageNodePort = 2;
+}
+
 message MessageWrapper {
     oneof msg {
         StoreChunk storeChunkMsg = 1;
         DownloadChunk downloadChunkMsg = 2;
         DownloadFile downloadFileMsg = 3;
         UploadFile uploadFileMsg = 4;
+        Heartbeat heartbeatMsg = 5;
     }
 }

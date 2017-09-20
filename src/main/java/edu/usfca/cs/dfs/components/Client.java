@@ -18,7 +18,7 @@ public class Client {
     private static final Logger logger = LoggerFactory.getLogger(Client.class);
 
     public static void main(String[] args)
-    throws Exception {
+            throws Exception {
 
         if (args.length < 4) {
             System.err.println("Usage: Client controller-host controller-port fileToSend storageNode1:port [storageNode2:port]...");
@@ -62,7 +62,7 @@ public class Client {
             logger.debug("Connecting to storage node " + storageNodeAddr);
             Socket sock = storageNodeAddr.getSocket();
 
-            logger.debug("Sending file 'my_file.txt' with data 'Hello World' to storage node " + storageNodeAddr);
+            logger.debug("Sending file '" + chunk.getFilename() + "' to storage node " + storageNodeAddr);
             // Read chunk data from disk
             FileInputStream fis = new FileInputStream(chunk.getChunkLocalPath().toFile());
             ByteString data = ByteString.readFrom(fis);

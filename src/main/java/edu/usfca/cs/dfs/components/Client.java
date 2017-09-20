@@ -101,6 +101,7 @@ public class Client {
 
     private static class GetStorageNodeListRunnable implements Runnable {
         private final ComponentAddress controllerAddr;
+        private final static Logger logger = LoggerFactory.getLogger(GetStorageNodeListRunnable.class);
 
         public GetStorageNodeListRunnable(ComponentAddress controllerAddr) {
             this.controllerAddr = controllerAddr;

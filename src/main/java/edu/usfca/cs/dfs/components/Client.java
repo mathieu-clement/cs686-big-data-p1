@@ -10,6 +10,8 @@ import org.slf4j.LoggerFactory;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Client {
 
@@ -17,32 +19,27 @@ public class Client {
 
     public static void main(String[] args)
     throws Exception {
-        /*if (args.length != 2) {
-            System.err.println("Two arguments required: controller-address controller-listening-port");
+
+        if (args.length < 4) {
+            System.err.println("Usage: Client controller-host controller-port fileToSend storageNode1:port [storageNode2:port]...");
             System.exit(1);
         }
 
-        String controllerAddr = args[0];
-        int controllerPort = Integer.parseInt(args[1]);
-        */
+        ComponentAddress controllerAddr = new ComponentAddress(args[0], Integer.parseInt(args[1]));
+        String filename = args[2];
+        ComponentAddress[] storageNodeAddresses = parseStorageNodeAddressesFromArgs(3, args);
 
-        if (args.length < 2) {
-            System.err.println("Usage: Client fileToSend storageNode1:port [storageNode2:port]...");
-            System.exit(1);
-        }
-
-        String filename = args[0];
-        ComponentAddress[] storageNodeAddresses = parseStorageNodeAddressesFromArgs(args);
+        new Thread(new GetStorageNodeListRunnable(controllerAddr)).start();
 
         sendChunkedSampleFile(filename, storageNodeAddresses);
     }
 
-    private static ComponentAddress[] parseStorageNodeAddressesFromArgs(String[] args) {
+    private static ComponentAddress[] parseStorageNodeAddressesFromArgs(int startIndex, String[] args) {
         int nbStorageNodes = args.length - 1;
         ComponentAddress[] storageNodeAddresses = new ComponentAddress[nbStorageNodes];
-        for (int i = 1; i < args.length; i++) {
+        for (int i = startIndex; i < args.length; i++) {
             String[] split = args[i].split(":");
-            storageNodeAddresses[i - 1] = new ComponentAddress(split[0], Integer.parseInt(split[1]));
+            storageNodeAddresses[i - startIndex] = new ComponentAddress(split[0], Integer.parseInt(split[1]));
         }
         return storageNodeAddresses;
     }
@@ -87,6 +84,58 @@ public class Client {
 
             logger.debug("Close connection to storage node " + storageNodeHost);
             sock.close();
+        }
+    }
+
+    private static List<ComponentAddress> toComponentAddresses(List<Messages.GetStorageNodesResponse.StorageNode> list) {
+        List<ComponentAddress> addresses = new ArrayList<>(list.size());
+        for (Messages.GetStorageNodesResponse.StorageNode storageNode : list) {
+            addresses.add(toComponentAddress(storageNode));
+        }
+        return addresses;
+    }
+
+    private static ComponentAddress toComponentAddress(Messages.GetStorageNodesResponse.StorageNode node) {
+        return new ComponentAddress(node.getHost(), node.getPort());
+    }
+
+    private static class GetStorageNodeListRunnable implements Runnable {
+        private final ComponentAddress controllerAddr;
+
+        public GetStorageNodeListRunnable(ComponentAddress controllerAddr) {
+            this.controllerAddr = controllerAddr;
+        }
+
+        @Override
+        public void run() {
+            try {
+                Socket socket = controllerAddr.getSocket();
+                while (true) {
+                    Messages.GetStorageNodesRequest storageNodesRequestMsg = Messages.GetStorageNodesRequest.newBuilder().build();
+                    Messages.MessageWrapper sentMsgWrapper = Messages.MessageWrapper.newBuilder()
+                            .setGetStoragesNodesRequestMsg(storageNodesRequestMsg)
+                            .build();
+
+                    logger.debug("Asking for list of storage nodes...");
+                    sentMsgWrapper.writeDelimitedTo(socket.getOutputStream());
+
+                    logger.debug("Waiting for list of storage nodes...");
+                    Messages.MessageWrapper receivedMsgWrapper = Messages.MessageWrapper.parseDelimitedFrom(socket.getInputStream());
+                    if (!receivedMsgWrapper.hasGetStorageNodesResponseMsg()) {
+                        throw new UnsupportedOperationException("Expected storage node list response, but got something else.");
+                    }
+                    Messages.GetStorageNodesResponse responseMsg = receivedMsgWrapper.getGetStorageNodesResponseMsg();
+
+                    List<ComponentAddress> storageNodes = toComponentAddresses(responseMsg.getNodesList());
+                    logger.debug("Received list of storage nodes: " + storageNodes);
+
+                    Thread.sleep(10000);
+                }
+            } catch (IOException ioe) {
+                logger.error("Could not get storage node list from controller", ioe);
+            } catch (InterruptedException e) {
+                logger.warn("Exception while sleeping", e);
+            }
         }
     }
 }

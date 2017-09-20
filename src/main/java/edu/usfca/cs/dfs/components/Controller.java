@@ -8,7 +8,9 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 public class Controller {
@@ -40,16 +42,16 @@ public class Controller {
         ServerSocket serverSocket = new ServerSocket(port);
         while (true) {
             Socket socket = serverSocket.accept();
-            new Thread(new ReceiveHeartbeatRunnable(onlineStorageNodes, socket)).start();
+            new Thread(new ProcessIncomingMessageRunnable(onlineStorageNodes, socket)).start();
         }
     }
 
-    private static class ReceiveHeartbeatRunnable implements Runnable {
-        private static final Logger logger = LoggerFactory.getLogger(ReceiveHeartbeatRunnable.class);
+    private static class ProcessIncomingMessageRunnable implements Runnable {
+        private static final Logger logger = LoggerFactory.getLogger(ProcessIncomingMessageRunnable.class);
         private final Set<ComponentAddress> onlineStorageNodes;
         private final Socket socket;
 
-        public ReceiveHeartbeatRunnable(Set<ComponentAddress> onlineStorageNodes, Socket socket) {
+        public ProcessIncomingMessageRunnable(Set<ComponentAddress> onlineStorageNodes, Socket socket) {
             this.onlineStorageNodes = onlineStorageNodes;
             this.socket = socket;
         }
@@ -66,6 +68,22 @@ public class Controller {
                                 msgWrapper.getHeartbeatMsg().getStorageNodePort());
                         logger.trace("Received heartbeat from " + storageNodeAddress);
                         onlineStorageNodes.add(storageNodeAddress);
+                    } else if (msgWrapper.hasGetStoragesNodesRequestMsg()) {
+                        List<Messages.GetStorageNodesResponse.StorageNode> msgStorageNodeList = new ArrayList<>(onlineStorageNodes.size());
+                        for (ComponentAddress onlineStorageNode : onlineStorageNodes) {
+                            msgStorageNodeList.add(Messages.GetStorageNodesResponse.StorageNode.newBuilder()
+                                    .setHost(onlineStorageNode.getHost())
+                                    .setPort(onlineStorageNode.getPort())
+                                    .build()
+                            );
+                        }
+                        Messages.GetStorageNodesResponse storageNodesResponse = Messages.GetStorageNodesResponse.newBuilder()
+                                .addAllNodes(msgStorageNodeList)
+                                .build();
+                        Messages.MessageWrapper responseMsgWrapper = Messages.MessageWrapper.newBuilder()
+                                .setGetStorageNodesResponseMsg(storageNodesResponse)
+                                .build();
+                        responseMsgWrapper.writeDelimitedTo(socket.getOutputStream());
                     }
                 } catch (IOException e) {
                     logger.error("Error reading from heartbeat socket", e);

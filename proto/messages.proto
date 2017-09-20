@@ -24,6 +24,18 @@ message Heartbeat {
     int32 storageNodePort = 2;
 }
 
+message GetStorageNodesRequest {
+
+}
+
+message GetStorageNodesResponse {
+    message StorageNode {
+        string host = 1;
+        int32 port = 2;
+    }
+    repeated StorageNode nodes = 4;
+}
+
 message MessageWrapper {
     oneof msg {
         StoreChunk storeChunkMsg = 1;
@@ -31,5 +43,7 @@ message MessageWrapper {
         DownloadFile downloadFileMsg = 3;
         UploadFile uploadFileMsg = 4;
         Heartbeat heartbeatMsg = 5;
+        GetStorageNodesRequest getStoragesNodesRequestMsg = 6;
+        GetStorageNodesResponse getStorageNodesResponseMsg = 7;
     }
 }

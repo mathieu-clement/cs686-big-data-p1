@@ -3,7 +3,7 @@ package edu.usfca.cs.dfs.components;
 import com.google.protobuf.ByteString;
 import edu.usfca.cs.dfs.messages.Messages;
 import edu.usfca.cs.dfs.structures.Chunk;
-import edu.usfca.cs.dfs.structures.StorageNodeAddress;
+import edu.usfca.cs.dfs.structures.ComponentAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,22 +32,22 @@ public class Client {
         }
 
         String filename = args[0];
-        StorageNodeAddress[] storageNodeAddresses = parseStorageNodeAddressesFromArgs(args);
+        ComponentAddress[] storageNodeAddresses = parseStorageNodeAddressesFromArgs(args);
 
         sendChunkedSampleFile(filename, storageNodeAddresses);
     }
 
-    private static StorageNodeAddress[] parseStorageNodeAddressesFromArgs(String[] args) {
+    private static ComponentAddress[] parseStorageNodeAddressesFromArgs(String[] args) {
         int nbStorageNodes = args.length - 1;
-        StorageNodeAddress[] storageNodeAddresses = new StorageNodeAddress[nbStorageNodes];
+        ComponentAddress[] storageNodeAddresses = new ComponentAddress[nbStorageNodes];
         for (int i = 1; i < args.length; i++) {
             String[] split = args[i].split(":");
-            storageNodeAddresses[i - 1] = new StorageNodeAddress(split[0], Integer.parseInt(split[1]));
+            storageNodeAddresses[i - 1] = new ComponentAddress(split[0], Integer.parseInt(split[1]));
         }
         return storageNodeAddresses;
     }
 
-    private static void sendChunkedSampleFile(String filename, StorageNodeAddress... storageNodeAddresses) throws IOException {
+    private static void sendChunkedSampleFile(String filename, ComponentAddress... storageNodeAddresses) throws IOException {
 
         int storageNodeIndex = 0;
         int nbStorageNodes = storageNodeAddresses.length;
@@ -58,12 +58,12 @@ public class Client {
             storageNodeIndex = i;
             logger.trace("Will send chunk " + chunk.getSequenceNo() + " to node #" + i);
 
-            StorageNodeAddress storageNodeAddr = storageNodeAddresses[i];
+            ComponentAddress storageNodeAddr = storageNodeAddresses[i];
             String storageNodeHost = storageNodeAddr.getHost();
             int storageNodePort = storageNodeAddr.getPort();
 
             logger.debug("Connecting to storage node " + storageNodeAddr);
-            Socket sock = new Socket(storageNodeHost, storageNodePort);
+            Socket sock = storageNodeAddr.getSocket();
 
             logger.debug("Sending file 'my_file.txt' with data 'Hello World' to storage node " + storageNodeAddr);
             // Read chunk data from disk

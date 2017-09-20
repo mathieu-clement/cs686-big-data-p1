@@ -52,7 +52,7 @@ public class Client {
         int storageNodeIndex = 0;
         int nbStorageNodes = storageNodeAddresses.length;
 
-        Chunk[] chunks = Chunk.createChunksFromFile(filename, (long) 1e6, "/tmp/output");
+        Chunk[] chunks = Chunk.createChunksFromFile(filename, (long) 1e6 /* 1 MB */, "/tmp/output");
         for (Chunk chunk : chunks) {
             int i = (storageNodeIndex + 1) % nbStorageNodes;
             storageNodeIndex = i;

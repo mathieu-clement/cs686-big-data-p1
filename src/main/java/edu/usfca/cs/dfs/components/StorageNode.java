@@ -72,8 +72,10 @@ public class StorageNode {
                 }
 
                 Path chunkFilePath = Paths.get(storageDirectory, storeChunkMsg.getFileName() + "-chunk" + storeChunkMsg.getSequenceNo());
+                // TODO Check if chunk is already stored on this node
                 logger.debug("Storing to file " + chunkFilePath);
                 FileOutputStream fos = new FileOutputStream(chunkFilePath.toFile());
+
 
                 storeChunkMsg.getData().writeTo(fos);
                 fos.close();

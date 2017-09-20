@@ -7,6 +7,7 @@ import edu.usfca.cs.dfs.structures.ComponentAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.Socket;
@@ -35,7 +36,7 @@ public class Client {
     }
 
     private static ComponentAddress[] parseStorageNodeAddressesFromArgs(int startIndex, String[] args) {
-        int nbStorageNodes = args.length - 1;
+        int nbStorageNodes = args.length - startIndex;
         ComponentAddress[] storageNodeAddresses = new ComponentAddress[nbStorageNodes];
         for (int i = startIndex; i < args.length; i++) {
             String[] split = args[i].split(":");
@@ -49,7 +50,7 @@ public class Client {
         int storageNodeIndex = 0;
         int nbStorageNodes = storageNodeAddresses.length;
 
-        Chunk[] chunks = Chunk.createChunksFromFile(filename, (long) 1e6 /* 1 MB */, "/tmp/output");
+        Chunk[] chunks = Chunk.createChunksFromFile(filename, (long) 8 /* 1 MB */, "/tmp/output");
         for (Chunk chunk : chunks) {
             int i = (storageNodeIndex + 1) % nbStorageNodes;
             storageNodeIndex = i;
@@ -64,7 +65,8 @@ public class Client {
 
             logger.debug("Sending file '" + chunk.getFilename() + "' to storage node " + storageNodeAddr);
             // Read chunk data from disk
-            FileInputStream fis = new FileInputStream(chunk.getChunkLocalPath().toFile());
+            File chunkFile = chunk.getChunkLocalPath().toFile();
+            FileInputStream fis = new FileInputStream(chunkFile);
             ByteString data = ByteString.readFrom(fis);
             fis.close();
 
@@ -83,6 +85,7 @@ public class Client {
             msgWrapper.writeDelimitedTo(sock.getOutputStream());
 
             logger.debug("Close connection to storage node " + storageNodeHost);
+            chunkFile.delete();
             sock.close();
         }
     }

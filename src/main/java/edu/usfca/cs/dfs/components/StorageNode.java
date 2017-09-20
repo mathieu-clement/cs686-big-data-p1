@@ -4,10 +4,14 @@ import edu.usfca.cs.dfs.messages.Messages;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public class StorageNode {
 
@@ -47,8 +51,22 @@ public class StorageNode {
                 Messages.StoreChunk storeChunkMsg
                     = msgWrapper.getStoreChunkMsg();
                 logger.debug("Storing file name: "
-                        + storeChunkMsg.getFileName() + " received from " +
+                        + storeChunkMsg.getFileName() + " Chunk #" + storeChunkMsg.getSequenceNo() + " received from " +
                         socket.getRemoteSocketAddress().toString());
+
+                String storageDirectory = "/tmp/storage-node-" + port;
+                File storageDirectoryFile = new File(storageDirectory);
+                if (!storageDirectoryFile.exists()) {
+                    storageDirectoryFile.mkdir();
+                }
+
+                Path chunkFilePath = Paths.get(storageDirectory, storeChunkMsg.getFileName() + "-chunk" + storeChunkMsg.getSequenceNo());
+                logger.debug("Storing to file " + chunkFilePath);
+                FileOutputStream fos = new FileOutputStream(chunkFilePath.toFile());
+
+                storeChunkMsg.getData().writeTo(fos);
+                fos.close();
+
             }
         }
     }

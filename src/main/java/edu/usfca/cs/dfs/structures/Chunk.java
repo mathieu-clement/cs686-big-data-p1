@@ -22,7 +22,7 @@ public class Chunk {
     }
 
     public static Chunk[] createChunksFromFile(
-            String filename, int chunkSize, String outputDirectory)
+            String filename, long chunkSize, String outputDirectory)
             throws IOException {
 
         File file = new File(filename);
@@ -31,6 +31,22 @@ public class Chunk {
         fis.close();
         int numberOfChunks = calculateNumberOfChunks(totalSize, chunkSize);
         return doCreateChunksFromFile(file, totalSize, numberOfChunks, chunkSize, outputDirectory);
+    }
+
+    public String getFilename() {
+        return filename;
+    }
+
+    public int getSequenceNo() {
+        return sequenceNo;
+    }
+
+    public long getSize() {
+        return size;
+    }
+
+    public Path getChunkLocalPath() {
+        return chunkLocalPath;
     }
 
     private static long checkFileNotEmpty(File file) {

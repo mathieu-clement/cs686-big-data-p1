@@ -1,5 +1,6 @@
 package edu.usfca.cs.dfs.components;
 
+import edu.usfca.cs.dfs.DFSProperties;
 import edu.usfca.cs.dfs.messages.Messages;
 import edu.usfca.cs.dfs.structures.ComponentAddress;
 import org.slf4j.Logger;
@@ -98,6 +99,7 @@ public class StorageNode {
         public void run() {
             try {
                 Socket socket = controllerAddr.getSocket();
+                int heartbeatPeriod = DFSProperties.getInstance().getHeartbeatPeriod();
 
                 while (true) {
                     Messages.Heartbeat heartbeatMsg = Messages.Heartbeat.newBuilder()
@@ -111,7 +113,7 @@ public class StorageNode {
                     logger.trace("Sending heartbeat to controller " + controllerAddr);
                     msgWrapper.writeDelimitedTo(socket.getOutputStream());
 
-                    Thread.sleep(5000);
+                    Thread.sleep(heartbeatPeriod);
                 }
             } catch (IOException e) {
                 logger.error("Could not create socket for heartbeat", e);

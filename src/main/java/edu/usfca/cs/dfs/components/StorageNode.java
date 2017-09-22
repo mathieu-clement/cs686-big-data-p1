@@ -2,6 +2,7 @@ package edu.usfca.cs.dfs.components;
 
 import edu.usfca.cs.dfs.DFSProperties;
 import edu.usfca.cs.dfs.messages.Messages;
+import edu.usfca.cs.dfs.structures.Chunk;
 import edu.usfca.cs.dfs.structures.ComponentAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,8 +14,10 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.*;
 
 public class StorageNode {
 
@@ -25,13 +28,16 @@ public class StorageNode {
     private final int port;
     private final ComponentAddress controllerAddr;
 
+    // Map of chunks. Key is filename.
+    private final Map<String, SortedSet<Chunk>> chunks = new HashMap<>();
+
     public StorageNode(int port, ComponentAddress controllerAddr) {
         this.port = port;
         this.controllerAddr = controllerAddr;
     }
 
     public static void main(String[] args)
-    throws Exception {
+            throws Exception {
         if (args.length != 3) {
             System.err.println("This program requires 3 arguments: storage-node-listening-port controller-address controller-listening-port");
             System.exit(1);
@@ -47,9 +53,19 @@ public class StorageNode {
         new StorageNode(port, controllerAddr).start();
     }
 
+    /**
+     * Retrieves the short host name of the current host.
+     *
+     * @return name of the current host
+     */
+    private static String getHostname()
+            throws UnknownHostException {
+        return InetAddress.getLocalHost().getHostName();
+    }
+
     public void start()
-    throws Exception {
-        new Thread(new HeartbeatRunnable(new ComponentAddress(getHostname(), port), controllerAddr)).start();
+            throws Exception {
+        new Thread(new HeartbeatRunnable(new ComponentAddress(getHostname(), port), controllerAddr, chunks)).start();
 
         srvSocket = new ServerSocket(port);
         logger.debug("Listening on port " + port + "...");
@@ -57,11 +73,11 @@ public class StorageNode {
             Socket socket = srvSocket.accept();
             Messages.MessageWrapper msgWrapper
                     = Messages.MessageWrapper.parseDelimitedFrom(
-                        socket.getInputStream());
+                    socket.getInputStream());
 
             if (msgWrapper.hasStoreChunkMsg()) {
                 Messages.StoreChunk storeChunkMsg
-                    = msgWrapper.getStoreChunkMsg();
+                        = msgWrapper.getStoreChunkMsg();
                 logger.debug("Storing file name: "
                         + storeChunkMsg.getFileName() + " Chunk #" + storeChunkMsg.getSequenceNo() + " received from " +
                         socket.getRemoteSocketAddress().toString());
@@ -76,23 +92,35 @@ public class StorageNode {
                 // TODO Check if chunk is already stored on this node
                 logger.debug("Storing to file " + chunkFilePath);
                 FileOutputStream fos = new FileOutputStream(chunkFilePath.toFile());
-
-
                 storeChunkMsg.getData().writeTo(fos);
                 fos.close();
 
+                addToChunkList(storeChunkMsg.getFileName(), storeChunkMsg.getSequenceNo(), chunkFilePath);
             }
         }
+    }
+
+    private void addToChunkList(String fileName, int sequenceNo, Path chunkFilePath) throws IOException {
+        Chunk chunk = new Chunk(fileName, sequenceNo, Files.size(chunkFilePath), chunkFilePath);
+        if (chunks.get(fileName) == null) {
+            chunks.put(fileName, new TreeSet<Chunk>());
+        }
+        chunks.get(fileName).add(chunk);
     }
 
     private static class HeartbeatRunnable implements Runnable {
         private static final Logger logger = LoggerFactory.getLogger(HeartbeatRunnable.class);
         private final ComponentAddress storageNodeAddr;
         private final ComponentAddress controllerAddr;
+        private final Map<String, SortedSet<Chunk>> chunks;
 
-        public HeartbeatRunnable(ComponentAddress storageNodeAddr, ComponentAddress controllerAddr) {
+        public HeartbeatRunnable(
+                ComponentAddress storageNodeAddr,
+                ComponentAddress controllerAddr,
+                Map<String, SortedSet<Chunk>> chunks) {
             this.storageNodeAddr = storageNodeAddr;
             this.controllerAddr = controllerAddr;
+            this.chunks = chunks;
         }
 
         @Override
@@ -105,6 +133,7 @@ public class StorageNode {
                     Messages.Heartbeat heartbeatMsg = Messages.Heartbeat.newBuilder()
                             .setStorageNodeHost(storageNodeAddr.getHost())
                             .setStorageNodePort(storageNodeAddr.getPort())
+                            .addAllFileChunks(getFileChunks())
                             .build();
                     Messages.MessageWrapper msgWrapper =
                             Messages.MessageWrapper.newBuilder()
@@ -121,16 +150,25 @@ public class StorageNode {
                 logger.warn("Couldn't sleep properly", e);
             }
         }
-    }
 
-    /**
-     * Retrieves the short host name of the current host.
-     *
-     * @return name of the current host
-     */
-    private static String getHostname()
-    throws UnknownHostException {
-        return InetAddress.getLocalHost().getHostName();
+        private Collection<Messages.Heartbeat.FileChunks> getFileChunks() {
+            Set<Messages.Heartbeat.FileChunks> result = new HashSet<>();
+            for (Map.Entry<String, SortedSet<Chunk>> entry : chunks.entrySet()) {
+                String filename = entry.getKey();
+                ArrayList<Integer> sequenceNos = new ArrayList<>(entry.getValue().size());
+
+                for (Chunk chunk : entry.getValue()) {
+                    sequenceNos.add(chunk.getSequenceNo());
+                }
+
+                Messages.Heartbeat.FileChunks fileChunksMsg = Messages.Heartbeat.FileChunks.newBuilder()
+                        .setFilename(filename)
+                        .addAllSequenceNos(sequenceNos)
+                        .build();
+                result.add(fileChunksMsg);
+            }
+            return result;
+        }
     }
 
 }

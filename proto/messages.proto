@@ -22,6 +22,12 @@ message UploadFile {
 message Heartbeat {
     string storageNodeHost = 1;
     int32 storageNodePort = 2;
+
+    message FileChunks {
+        string filename = 1;
+        repeated int32 sequenceNos = 2;
+    }
+    repeated FileChunks fileChunks = 3;
 }
 
 message GetStorageNodesRequest {

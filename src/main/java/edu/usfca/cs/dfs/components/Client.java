@@ -13,10 +13,13 @@ import java.io.IOException;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Semaphore;
 
 public class Client {
 
     private static final Logger logger = LoggerFactory.getLogger(Client.class);
+
+    private Semaphore storageNodeListReceived = new Semaphore(0);
 
     public static void main(String[] args)
             throws Exception {
@@ -31,6 +34,7 @@ public class Client {
         ComponentAddress[] storageNodeAddresses = parseStorageNodeAddressesFromArgs(3, args);
 
         new Thread(new GetStorageNodeListRunnable(controllerAddr)).start();
+
 
         sendChunkedSampleFile(filename, storageNodeAddresses);
     }
@@ -50,15 +54,13 @@ public class Client {
         int storageNodeIndex = 0;
         int nbStorageNodes = storageNodeAddresses.length;
 
-        Chunk[] chunks = Chunk.createChunksFromFile(filename, (long) 8 /* 1 MB */, "/tmp/output");
+        Chunk[] chunks = Chunk.createChunksFromFile(filename, (long) 8, "/tmp/output");
         for (Chunk chunk : chunks) {
             int i = (storageNodeIndex + 1) % nbStorageNodes;
             storageNodeIndex = i;
             logger.trace("Will send chunk " + chunk.getSequenceNo() + " to node #" + i);
 
             ComponentAddress storageNodeAddr = storageNodeAddresses[i];
-            String storageNodeHost = storageNodeAddr.getHost();
-            int storageNodePort = storageNodeAddr.getPort();
 
             logger.debug("Connecting to storage node " + storageNodeAddr);
             Socket sock = storageNodeAddr.getSocket();
@@ -84,7 +86,8 @@ public class Client {
 
             msgWrapper.writeDelimitedTo(sock.getOutputStream());
 
-            logger.debug("Close connection to storage node " + storageNodeHost);
+            logger.debug("Close connection to storage node " + storageNodeAddr.getHost());
+            logger.debug("Deleting chunk file " + chunkFile.getName());
             chunkFile.delete();
             sock.close();
         }

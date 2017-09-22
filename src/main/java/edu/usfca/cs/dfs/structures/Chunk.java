@@ -7,8 +7,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Objects;
 
-public class Chunk {
+public class Chunk implements Comparable<Chunk> {
     private final String filename;
     private final int sequenceNo;
     private final long size;
@@ -129,5 +130,27 @@ public class Chunk {
     private static Path makeChunkFilePath(File file, int chunkSequenceNo, String outputDirectory) {
         String fileBasename = file.getName();
         return Paths.get(outputDirectory, fileBasename + "-chunk" + chunkSequenceNo);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Chunk chunk = (Chunk) o;
+        return sequenceNo == chunk.sequenceNo &&
+                Objects.equals(filename, chunk.filename);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(filename, sequenceNo);
+    }
+
+    @Override
+    public int compareTo(Chunk o) {
+        if (!this.filename.equals(o.filename)) {
+            return this.filename.compareTo(o.filename);
+        }
+        return Integer.compare(this.sequenceNo, o.sequenceNo);
     }
 }

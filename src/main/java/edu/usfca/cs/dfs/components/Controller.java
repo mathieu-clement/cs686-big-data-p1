@@ -8,10 +8,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class Controller {
 
@@ -63,10 +60,14 @@ public class Controller {
                     Messages.MessageWrapper msgWrapper = Messages.MessageWrapper.parseDelimitedFrom(socket.getInputStream());
 
                     if (msgWrapper.hasHeartbeatMsg()) {
+                        Messages.Heartbeat msg = msgWrapper.getHeartbeatMsg();
                         ComponentAddress storageNodeAddress = new ComponentAddress(
-                                msgWrapper.getHeartbeatMsg().getStorageNodeHost(),
-                                msgWrapper.getHeartbeatMsg().getStorageNodePort());
-                        logger.trace("Received heartbeat from " + storageNodeAddress);
+                                msg.getStorageNodeHost(),
+                                msg.getStorageNodePort());
+
+                        Map<String, SortedSet<Integer>> fileChunks = toFileChunksMap(msg.getFileChunksList());
+
+                        logger.trace("Received heartbeat from " + storageNodeAddress + " with file chunks: " + fileChunks);
                         onlineStorageNodes.add(storageNodeAddress);
                     } else if (msgWrapper.hasGetStoragesNodesRequestMsg()) {
                         List<Messages.GetStorageNodesResponse.StorageNode> msgStorageNodeList = new ArrayList<>(onlineStorageNodes.size());
@@ -89,6 +90,16 @@ public class Controller {
                     logger.error("Error reading from heartbeat socket", e);
                 }
             }
+        }
+
+        private Map<String, SortedSet<Integer>> toFileChunksMap(List<Messages.Heartbeat.FileChunks> pbFileChunks) {
+            Map<String, SortedSet<Integer>> result = new HashMap<>();
+            for (Messages.Heartbeat.FileChunks pbFileChunk : pbFileChunks) {
+                String filename = pbFileChunk.getFilename();
+                TreeSet<Integer> sequenceNos = new TreeSet<>(pbFileChunk.getSequenceNosList());
+                result.put(filename, sequenceNos);
+            }
+            return result;
         }
     }
 

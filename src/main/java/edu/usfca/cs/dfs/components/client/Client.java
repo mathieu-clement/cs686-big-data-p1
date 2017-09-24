@@ -1,4 +1,4 @@
-package edu.usfca.cs.dfs.components;
+package edu.usfca.cs.dfs.components.client;
 
 import com.google.protobuf.ByteString;
 import edu.usfca.cs.dfs.DFSProperties;

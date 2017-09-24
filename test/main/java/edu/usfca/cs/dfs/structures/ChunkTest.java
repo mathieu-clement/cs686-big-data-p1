@@ -6,6 +6,8 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 import static edu.usfca.cs.dfs.structures.Chunk.*;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -62,6 +64,27 @@ class ChunkTest {
             deleteAllFilesFromDirectory(outputDirectoryFile);
             outputDirectoryFile.delete();
         }
+    }
+
+    @Test
+    void testCreateFileFromChunks() throws Exception {
+        int nbChunks = 4;
+        SortedSet<Chunk> chunks = new TreeSet<>();
+        StringBuilder sb = new StringBuilder();
+
+        for (int i = 0; i < nbChunks; ++i) {
+            File chunkFile = File.createTempFile("chunktest", "chunk" + i);
+            String content = "content" + i;
+            Chunk chunk = new Chunk("theFilename", i, content.getBytes().length, chunkFile.toPath());
+            chunks.add(chunk);
+            writeStringToFile(chunkFile.getAbsolutePath(), content);
+            sb.append(content);
+        }
+
+        File outputFile = Chunk.createFileFromChunks(chunks);
+        String actual = new String(Files.readAllBytes(outputFile.toPath()));
+        String expected = sb.toString();
+        assertEquals(expected, actual);
     }
 
     private byte[] readBytesFromFile(File file) throws IOException {

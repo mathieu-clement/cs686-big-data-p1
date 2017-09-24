@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Objects;
+import java.util.SortedSet;
 
 public class Chunk implements Comparable<Chunk> {
     private final String filename;
@@ -32,6 +33,10 @@ public class Chunk implements Comparable<Chunk> {
         fis.close();
         int numberOfChunks = calculateNumberOfChunks(totalSize, chunkSize);
         return doCreateChunksFromFile(file, totalSize, numberOfChunks, chunkSize, outputDirectory);
+    }
+
+    public static File createFileFromChunks(SortedSet<Chunk> chunks) {
+        return null;
     }
 
     public String getFilename() {

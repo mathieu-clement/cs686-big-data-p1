@@ -82,7 +82,7 @@ public class StorageNode {
                         + storeChunkMsg.getFileName() + " Chunk #" + storeChunkMsg.getSequenceNo() + " received from " +
                         socket.getRemoteSocketAddress().toString());
 
-                String storageDirectory = "/tmp/storage-node-" + port;
+                String storageDirectory = DFSProperties.getInstance().getStorageNodeChunksDir();
                 File storageDirectoryFile = new File(storageDirectory);
                 if (!storageDirectoryFile.exists()) {
                     storageDirectoryFile.mkdir();

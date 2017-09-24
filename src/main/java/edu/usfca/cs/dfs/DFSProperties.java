@@ -28,4 +28,16 @@ public class DFSProperties {
     public int getHeartbeatPeriod() {
         return Integer.parseInt(properties.getProperty("heartbeat-period"));
     }
+
+    public long getChunkSize() {
+        return Long.parseLong(properties.getProperty("chunk-size"));
+    }
+
+    public String getClientChunksDir() {
+        return properties.getProperty("client-chunks-dir");
+    }
+
+    public String getStorageNodeChunksDir() {
+        return properties.getProperty("storage-node-chunks-dir");
+    }
 }

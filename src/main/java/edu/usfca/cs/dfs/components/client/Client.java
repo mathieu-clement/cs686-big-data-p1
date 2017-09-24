@@ -97,7 +97,7 @@ public class Client {
         }
     }
 
-    private static List<ComponentAddress> toComponentAddresses(List<Messages.GetStorageNodesResponse.StorageNode> list) {
+    static List<ComponentAddress> toComponentAddresses(List<Messages.GetStorageNodesResponse.StorageNode> list) {
         List<ComponentAddress> addresses = new ArrayList<>(list.size());
         for (Messages.GetStorageNodesResponse.StorageNode storageNode : list) {
             addresses.add(toComponentAddress(storageNode));
@@ -109,44 +109,4 @@ public class Client {
         return new ComponentAddress(node.getHost(), node.getPort());
     }
 
-    private static class GetStorageNodeListRunnable implements Runnable {
-        private final ComponentAddress controllerAddr;
-        private final static Logger logger = LoggerFactory.getLogger(GetStorageNodeListRunnable.class);
-
-        public GetStorageNodeListRunnable(ComponentAddress controllerAddr) {
-            this.controllerAddr = controllerAddr;
-        }
-
-        @Override
-        public void run() {
-            try {
-                Socket socket = controllerAddr.getSocket();
-                while (true) {
-                    Messages.GetStorageNodesRequest storageNodesRequestMsg = Messages.GetStorageNodesRequest.newBuilder().build();
-                    Messages.MessageWrapper sentMsgWrapper = Messages.MessageWrapper.newBuilder()
-                            .setGetStoragesNodesRequestMsg(storageNodesRequestMsg)
-                            .build();
-
-                    logger.debug("Asking for list of storage nodes...");
-                    sentMsgWrapper.writeDelimitedTo(socket.getOutputStream());
-
-                    logger.debug("Waiting for list of storage nodes...");
-                    Messages.MessageWrapper receivedMsgWrapper = Messages.MessageWrapper.parseDelimitedFrom(socket.getInputStream());
-                    if (!receivedMsgWrapper.hasGetStorageNodesResponseMsg()) {
-                        throw new UnsupportedOperationException("Expected storage node list response, but got something else.");
-                    }
-                    Messages.GetStorageNodesResponse responseMsg = receivedMsgWrapper.getGetStorageNodesResponseMsg();
-
-                    List<ComponentAddress> storageNodes = toComponentAddresses(responseMsg.getNodesList());
-                    logger.debug("Received list of storage nodes: " + storageNodes);
-
-                    Thread.sleep(10000);
-                }
-            } catch (IOException ioe) {
-                logger.error("Could not get storage node list from controller", ioe);
-            } catch (InterruptedException e) {
-                logger.warn("Exception while sleeping", e);
-            }
-        }
-    }
 }

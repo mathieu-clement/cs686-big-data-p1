@@ -81,9 +81,17 @@ class ChunkTest {
             sb.append(content);
         }
 
-        File outputFile = Chunk.createFileFromChunks(chunks);
-        String actual = new String(Files.readAllBytes(outputFile.toPath()));
+        File outputTempFile = File.createTempFile("chunktest", "outputfile");
+        File outputFileFromMethod = Chunk.createFileFromChunks(chunks, outputTempFile.getAbsolutePath());
+        String actual = new String(Files.readAllBytes(outputFileFromMethod.toPath()));
         String expected = sb.toString();
+
+        // Cleanup
+        for (Chunk chunk : chunks) {
+            chunk.getChunkLocalPath().toFile().delete();
+        }
+        outputTempFile.delete();
+
         assertEquals(expected, actual);
     }
 

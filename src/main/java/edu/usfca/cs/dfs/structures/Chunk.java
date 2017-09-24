@@ -1,9 +1,6 @@
 package edu.usfca.cs.dfs.structures;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -35,8 +32,48 @@ public class Chunk implements Comparable<Chunk> {
         return doCreateChunksFromFile(file, totalSize, numberOfChunks, chunkSize, outputDirectory);
     }
 
-    public static File createFileFromChunks(SortedSet<Chunk> chunks) {
-        return null;
+    public static File createFileFromChunks(SortedSet<Chunk> chunks, String outputFilePathname) throws IOException {
+        // Check first chunk is #0
+        int firstSequenceNo = chunks.first().getSequenceNo();
+        if (firstSequenceNo != 0) {
+            throw new IllegalArgumentException("Chunk #0 could not be found");
+        }
+
+        // Check all chunks are here
+        int lastSequenceNo = chunks.last().getSequenceNo();
+        int nbChunksExpected = lastSequenceNo - firstSequenceNo + 1;
+        if (chunks.size() != nbChunksExpected) {
+            throw new IllegalArgumentException("Last sequence no is " + lastSequenceNo + " so should have " + nbChunksExpected + " chunks, but there are only " + chunks.size());
+        }
+
+        // Check all chunks have the same filename
+        String filename = chunks.first().filename;
+        for (Chunk chunk : chunks) {
+            if (!chunk.filename.equals(filename)) {
+                throw new IllegalArgumentException("Not all chunks have the same filename.");
+            }
+        }
+
+        // Assemble file
+        // (could avoid iterating twice, but creates messy code)
+        File outputFile = new File(outputFilePathname);
+        if (outputFile.exists() && outputFile.length() != 0) {
+            throw new IllegalArgumentException("Output file already exists.");
+        }
+        BufferedWriter writer = new BufferedWriter(new FileWriter(outputFile));
+        for (Chunk chunk : chunks) {
+            File chunkFile = chunk.getChunkLocalPath().toFile();
+            BufferedReader reader = new BufferedReader(new FileReader(chunkFile));
+            char[] readBuf = new char[1024];
+            int c = 0;
+            while ((c = reader.read(readBuf)) != -1) {
+                writer.write(readBuf, 0, c);
+            }
+            reader.close();
+        }
+        writer.close();
+
+        return outputFile;
     }
 
     public String getFilename() {

@@ -14,16 +14,12 @@ import java.io.IOException;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Semaphore;
 
 public class Client {
 
     private static final Logger logger = LoggerFactory.getLogger(Client.class);
 
-    private Semaphore storageNodeListReceived = new Semaphore(0);
-
-    public static void main(String[] args)
-            throws Exception {
+    public static void main(String[] args) throws Exception {
 
         if (args.length < 4) {
             System.err.println("Usage: Client controller-host controller-port fileToSend storageNode1:port [storageNode2:port]...");

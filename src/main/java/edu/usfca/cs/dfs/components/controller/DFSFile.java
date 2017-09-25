@@ -8,19 +8,23 @@ import java.util.TreeSet;
  */
 public class DFSFile implements Comparable<DFSFile> {
     private final String filename;
-    private final long size;
-    private final String checksum;
 
     private final Set<ChunkRef> chunks = new TreeSet<>();
 
-    public DFSFile(String filename, long size, String checksum) {
+    public DFSFile(String filename) {
         this.filename = filename;
-        this.size = size;
-        this.checksum = checksum;
     }
 
     public Set<ChunkRef> getChunks() {
         return chunks;
+    }
+
+    public long getSize() {
+        long fileSize = 0;
+        for (ChunkRef chunk : chunks) {
+            fileSize += chunk.getSize();
+        }
+        return fileSize;
     }
 
     @Override

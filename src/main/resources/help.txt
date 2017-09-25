@@ -1,0 +1,35 @@
+DFS Client
+
+NAME
+    Client -- Distributed File System Client / User Interface
+
+
+SYNOPSIS
+    Client controller-host controller-port command [command_arguments]
+
+
+DESCRIPTION
+    The Client communicates with the controller and storage nodes (to
+    upload and download chunks of files). It is the part of the
+    Distributed File System (DFS) that allows user interaction.
+
+    list-files
+        Retrieves the names of the files reachable by the controller.
+
+    show-file filename
+        Shows information about a file such as how it has been "chunked",
+        where the replicas are located.
+
+    download-file filename
+        Downloads a file from the DFS.
+        In detail, it will query the controller about the location of
+        the chunks, download those from different storage nodes
+        in parallel, calculate the checksum, and finally assemble them
+        into a single file.
+
+    upload-file filename
+        Uploads a file to the DFS.
+        In detail, it will chunk the file into several pieces,
+        calculate a checksum for each "chunk" and send those chunks
+        in parallel to a list of storage nodes provided by the controller
+        to store the file.

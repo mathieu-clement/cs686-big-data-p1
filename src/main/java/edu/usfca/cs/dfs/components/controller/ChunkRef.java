@@ -22,7 +22,7 @@ public class ChunkRef implements Comparable<ChunkRef> {
         this.size = size;
     }
 
-    public int getNumberOfReplicas() {
+    public int getReplicaCount() {
         return replicaLocations.size();
     }
 

@@ -11,39 +11,38 @@ import java.util.*;
  * one replica on one reachable storage node for that chunk.
  */
 public class FileTable {
-    // What kind of information is in the file table?
-    /*
-    Storage nodes
-    Files (incl. total size)
-    Chunks (incl. size and replica location and count)
-     */
-
-    // Supported operations
-    /*
-        List all files by name -> getFilenames()
-        List chunk sizes and locations and number of replica -> getFile()
-        List all chunks that need to be replicated, incl. current location of replicas
-        Remove all replicas from a storage node that became offline
-        TODO: Add all replicas from a storage that became online
-     */
 
     private final Map<String, DFSFile> files = new HashMap<>();
 
-    // sorted
+    /**
+     * Returns names of the files in the system, sorted.
+     *
+     * @return names of the files in the system
+     */
     public SortedSet<String> getFilenames() {
         return new TreeSet<>(files.keySet());
     }
 
+    /**
+     * Look up a file (and its chunks and replicas) by name
+     *
+     * @param filename Filename
+     * @return file
+     */
     public DFSFile getFile(String filename) {
         return files.get(filename);
     }
 
+    /**
+     * Returns list of chunks that need to be replicated
+     * @return list of chunks that need to be replicated
+     */
     public List<ChunkRef> getUnderReplicatedChunks() {
         List<ChunkRef> chunks = new ArrayList<>();
         int minReplicas = DFSProperties.getInstance().getMinReplicas();
         for (DFSFile file : files.values()) {
             for (ChunkRef chunk : file.getChunks()) {
-                if (chunk.getNumberOfReplicas() < minReplicas) {
+                if (chunk.getReplicaCount() < minReplicas) {
                     chunks.add(chunk);
                 }
             }
@@ -51,13 +50,43 @@ public class FileTable {
         return chunks;
     }
 
+    /**
+     * Remove replicas from a storage node that has gone offline, which might remove
+     * a chunk altogether, and even a file altogether.
+     * @param storageNode storage node now offline
+     */
     public void onStorageNodeOffline(ComponentAddress storageNode) {
+        // Chunks that are modified and that we need to remove later in case
+        // there are no more replicas left
+        List<ChunkRef> modifiedChunks = new ArrayList<>();
+
+        // Files that are modified and that we need to remove later in case
+        // there are no chunks left
+        List<DFSFile> modifiedFiles = new ArrayList<>();
+
         for (DFSFile file : files.values()) {
             for (ChunkRef chunk : file.getChunks()) {
                 Set<ComponentAddress> locations = chunk.getReplicaLocations();
                 if (locations.contains(storageNode)) {
                     locations.remove(storageNode);
+                    modifiedChunks.add(chunk);
                 }
+            }
+        }
+
+        // Remove chunks that have no replicas
+        for (ChunkRef chunk : modifiedChunks) {
+            if (chunk.getReplicaCount() == 0) {
+                DFSFile file = files.get(chunk.getFilename());
+                file.removeChunk(chunk.getSequenceNo());
+                modifiedFiles.add(file);
+            }
+        }
+
+        // Remove files that have no chunks
+        for (DFSFile file : modifiedFiles) {
+            if (file.getChunkCount() == 0) {
+                files.remove(file);
             }
         }
     }

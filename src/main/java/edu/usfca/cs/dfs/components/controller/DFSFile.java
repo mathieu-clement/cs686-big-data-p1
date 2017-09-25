@@ -1,9 +1,6 @@
 package edu.usfca.cs.dfs.components.controller;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.SortedSet;
-import java.util.TreeSet;
+import java.util.*;
 
 /**
  * Structure used by the controller to manage the files stored in the DFS
@@ -33,12 +30,8 @@ public class DFSFile implements Comparable<DFSFile> {
         return this.chunks.containsKey(sequenceNo);
     }
 
-    public long getSize() {
-        long fileSize = 0;
-        for (ChunkRef chunk : chunks.values()) {
-            fileSize += chunk.getSize();
-        }
-        return fileSize;
+    public int getChunkCount() {
+        return this.chunks.size();
     }
 
     @Override
@@ -48,5 +41,22 @@ public class DFSFile implements Comparable<DFSFile> {
 
     public String getFilename() {
         return filename;
+    }
+
+    public void removeChunk(int sequenceNo) {
+        chunks.remove(sequenceNo);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        DFSFile dfsFile = (DFSFile) o;
+        return Objects.equals(filename, dfsFile.filename);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(filename);
     }
 }

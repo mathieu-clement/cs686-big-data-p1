@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.net.Socket;
 import java.util.Objects;
 
-public class ComponentAddress {
+public class ComponentAddress implements Comparable<ComponentAddress> {
     private final String host;
     private final int port;
 
@@ -41,5 +41,13 @@ public class ComponentAddress {
 
     public Socket getSocket() throws IOException {
         return new Socket(host, port);
+    }
+
+    @Override
+    public int compareTo(ComponentAddress o) {
+        if (!this.host.equals(o.host)) {
+            return this.host.compareTo(o.host);
+        }
+        return Integer.compare(this.port, o.port);
     }
 }

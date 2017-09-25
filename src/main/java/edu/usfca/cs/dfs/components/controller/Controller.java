@@ -14,7 +14,9 @@ public class Controller {
 
     private final int port;
 
-    private Set<ComponentAddress> onlineStorageNodes = new HashSet<>();
+    private final Set<ComponentAddress> onlineStorageNodes = new HashSet<>();
+
+    private final FileTable fileTable = new FileTable();
 
     public Controller(int port) {
         this.port = port;

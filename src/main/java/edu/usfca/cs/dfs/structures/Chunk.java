@@ -7,16 +7,20 @@ import java.nio.file.Paths;
 import java.util.Objects;
 import java.util.SortedSet;
 
+import static edu.usfca.cs.dfs.Utils.md5sum;
+
 public class Chunk implements Comparable<Chunk> {
     private final String filename;
     private final int sequenceNo;
     private final long size;
+    private final String checksum;
     private final Path chunkLocalPath;
 
-    public Chunk(String filename, int sequenceNo, long size, Path chunkLocalPath) {
+    public Chunk(String filename, int sequenceNo, long size, String checksum, Path chunkLocalPath) {
         this.filename = filename;
         this.sequenceNo = sequenceNo;
         this.size = size;
+        this.checksum = checksum;
         this.chunkLocalPath = chunkLocalPath;
     }
 
@@ -108,13 +112,13 @@ public class Chunk implements Comparable<Chunk> {
 
         for (int i = 0; i < lastSequenceNo; i++) {
             Path chunkLocalPath = makeChunkFilePath(file, i, outputDirectory);
-            chunks[i] = new Chunk(file.getName(), i, defaultChunkSize, chunkLocalPath);
+            chunks[i] = new Chunk(file.getName(), i, defaultChunkSize, md5sum(chunkLocalPath), chunkLocalPath);
             writeToChunkFile(fis, chunkLocalPath, defaultChunkSize);
         }
 
         long lastChunkSize = calculateLastChunkSize(numberOfChunks, defaultChunkSize, fileSize);
         Path lastChunkFilePath = makeChunkFilePath(file, lastSequenceNo, outputDirectory);
-        chunks[lastSequenceNo] = new Chunk(file.getName(), lastSequenceNo, lastChunkSize, lastChunkFilePath);
+        chunks[lastSequenceNo] = new Chunk(file.getName(), lastSequenceNo, lastChunkSize, md5sum(lastChunkFilePath), lastChunkFilePath);
         writeToChunkFile(fis, lastChunkFilePath, lastChunkSize);
         return chunks;
     }

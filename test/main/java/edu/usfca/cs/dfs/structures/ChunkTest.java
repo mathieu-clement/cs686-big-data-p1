@@ -1,5 +1,6 @@
 package edu.usfca.cs.dfs.structures;
 
+import edu.usfca.cs.dfs.Utils;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
@@ -13,7 +14,7 @@ import static edu.usfca.cs.dfs.structures.Chunk.*;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-class ChunkTest {
+public class ChunkTest {
     @Test
     void testCalculateNumberOfChunks() {
         assertEquals(1, calculateNumberOfChunks(100, 100));
@@ -66,6 +67,16 @@ class ChunkTest {
         }
     }
 
+    public static void writeStringToFile(String filename, String str) throws IOException {
+        FileWriter inputFileWriter = new FileWriter(filename);
+        inputFileWriter.write(str);
+        inputFileWriter.close();
+    }
+
+    private byte[] readBytesFromFile(File file) throws IOException {
+        return Files.readAllBytes(file.toPath());
+    }
+
     @Test
     void testCreateFileFromChunks() throws Exception {
         int nbChunks = 4;
@@ -75,9 +86,9 @@ class ChunkTest {
         for (int i = 0; i < nbChunks; ++i) {
             File chunkFile = File.createTempFile("chunktest", "chunk" + i);
             String content = "content" + i;
-            Chunk chunk = new Chunk("theFilename", i, content.getBytes().length, chunkFile.toPath());
-            chunks.add(chunk);
             writeStringToFile(chunkFile.getAbsolutePath(), content);
+            Chunk chunk = new Chunk("theFilename", i, content.getBytes().length, Utils.md5sum(chunkFile), chunkFile.toPath());
+            chunks.add(chunk);
             sb.append(content);
         }
 
@@ -93,16 +104,6 @@ class ChunkTest {
         outputTempFile.delete();
 
         assertEquals(expected, actual);
-    }
-
-    private byte[] readBytesFromFile(File file) throws IOException {
-        return Files.readAllBytes(file.toPath());
-    }
-
-    private void writeStringToFile(String filename, String str) throws IOException {
-        FileWriter inputFileWriter = new FileWriter(filename);
-        inputFileWriter.write(str);
-        inputFileWriter.close();
     }
 
     private void deleteAllFilesFromDirectory(File outputDirectoryFile) {

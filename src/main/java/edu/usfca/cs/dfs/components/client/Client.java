@@ -16,6 +16,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 
+import static edu.usfca.cs.dfs.Utils.md5sum;
+
 public class Client {
 
     private static final Logger logger = LoggerFactory.getLogger(Client.class);
@@ -80,6 +82,7 @@ public class Client {
                     = Messages.StoreChunk.newBuilder()
                     .setFileName(chunk.getFilename())
                     .setSequenceNo(chunk.getSequenceNo())
+                    .setChecksum(md5sum(chunkFile))
                     .setData(data)
                     .build();
 

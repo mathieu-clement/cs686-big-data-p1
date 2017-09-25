@@ -1,7 +1,10 @@
 package edu.usfca.cs.dfs;
 
+import edu.usfca.cs.dfs.structures.ChunkTest;
 import org.junit.jupiter.api.Test;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -23,4 +26,16 @@ class UtilsTest {
         }
     }
 
+    @Test
+    void testMd5sum() throws IOException {
+        String content = "I like ice cream.\n";
+        String expectedSum = "bbc3b8f636bbcf0b994f0698d25ca85c";
+
+        File file = File.createTempFile("md5sumtest", "icecream");
+        ChunkTest.writeStringToFile(file.getAbsolutePath(), content);
+        String actualSum = Utils.md5sum(file);
+        file.delete();
+
+        assertEquals(expectedSum, actualSum);
+    }
 }

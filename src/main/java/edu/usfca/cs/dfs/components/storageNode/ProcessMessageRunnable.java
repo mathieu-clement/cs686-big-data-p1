@@ -67,12 +67,13 @@ class ProcessMessageRunnable implements Runnable {
         FileOutputStream fos = new FileOutputStream(chunkFile);
         storeChunkMsg.getData().writeTo(fos);
         fos.close();
+        // TODO Check sum
 
-        addToChunkList(storeChunkMsg.getFileName(), storeChunkMsg.getSequenceNo(), chunkFilePath);
+        addToChunkList(storeChunkMsg.getFileName(), storeChunkMsg.getSequenceNo(), storeChunkMsg.getChecksum(), chunkFilePath);
     }
 
-    private void addToChunkList(String fileName, int sequenceNo, Path chunkFilePath) throws IOException {
-        Chunk chunk = new Chunk(fileName, sequenceNo, Files.size(chunkFilePath), chunkFilePath);
+    private void addToChunkList(String fileName, int sequenceNo, String checksum, Path chunkFilePath) throws IOException {
+        Chunk chunk = new Chunk(fileName, sequenceNo, Files.size(chunkFilePath), checksum, chunkFilePath);
         if (chunks.get(fileName) == null) {
             chunks.put(fileName, new TreeSet<Chunk>());
         }

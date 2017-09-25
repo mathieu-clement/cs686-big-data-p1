@@ -95,7 +95,9 @@ public class Client {
 
             logger.debug("Close connection to storage node " + storageNodeAddr.getHost());
             logger.debug("Deleting chunk file " + chunkFile.getName());
-            chunkFile.delete();
+            if (!chunkFile.delete()) {
+                logger.warn("Chunk file " + chunkFile.getName() + " could not be deleted.");
+            }
             sock.close();
         }
     }

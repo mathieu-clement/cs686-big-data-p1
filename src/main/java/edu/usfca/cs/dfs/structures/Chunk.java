@@ -69,7 +69,7 @@ public class Chunk implements Comparable<Chunk> {
             File chunkFile = chunk.getChunkLocalPath().toFile();
             BufferedReader reader = new BufferedReader(new FileReader(chunkFile));
             char[] readBuf = new char[1024];
-            int c = 0;
+            int c;
             while ((c = reader.read(readBuf)) != -1) {
                 writer.write(readBuf, 0, c);
             }

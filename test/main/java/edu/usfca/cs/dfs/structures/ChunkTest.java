@@ -56,8 +56,8 @@ public class ChunkTest {
             int counter = 0;
             for (String s : outputDirectoryFile.list()) {
                 byte[] sBytes = readBytesFromFile(new File(outputDirectory, s));
-                for (int i = 0; i < sBytes.length; i++) {
-                    actualBytes[counter++] = sBytes[i];
+                for (byte b : sBytes) {
+                    actualBytes[counter++] = b;
                 }
             }
             assertArrayEquals(inputString.getBytes(), actualBytes);

@@ -30,15 +30,13 @@ class ProcessMessageRunnable implements Runnable {
 
     @Override
     public void run() {
-        Messages.MessageWrapper msgWrapper
-                = null;
         try {
-            msgWrapper = Messages.MessageWrapper.parseDelimitedFrom(
+            Messages.MessageWrapper msg = Messages.MessageWrapper.parseDelimitedFrom(
                     socket.getInputStream());
 
             // Dispatch
-            if (msgWrapper.hasStoreChunkMsg()) {
-                processStoreChunkMsg(socket, msgWrapper);
+            if (msg.hasStoreChunkMsg()) {
+                processStoreChunkMsg(socket, msg);
             }
         } catch (IOException e) {
             logger.error("Error while parsing message or other IO error", e);
@@ -55,7 +53,10 @@ class ProcessMessageRunnable implements Runnable {
         String storageDirectory = DFSProperties.getInstance().getStorageNodeChunksDir();
         File storageDirectoryFile = new File(storageDirectory);
         if (!storageDirectoryFile.exists()) {
-            storageDirectoryFile.mkdir();
+            if (!storageDirectoryFile.mkdir()) {
+                System.err.println("Could not create storage directory.");
+                System.exit(1);
+            }
         }
 
         Path chunkFilePath = Paths.get(storageDirectory, storeChunkMsg.getFileName() + "-chunk" + storeChunkMsg.getSequenceNo());

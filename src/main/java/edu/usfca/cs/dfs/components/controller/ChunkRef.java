@@ -21,12 +21,19 @@ public class ChunkRef implements Comparable<ChunkRef> {
         this.size = size;
     }
 
+    public int getNumberOfReplicas() {
+        return replicaLocations.size();
+    }
+
     public Set<ComponentAddress> getReplicaLocations() {
         return replicaLocations;
     }
 
     @Override
     public int compareTo(ChunkRef o) {
+        if (!this.filename.equals(o.filename)) {
+            return this.filename.compareTo(o.filename);
+        }
         return Integer.compare(this.sequenceNo, o.sequenceNo);
     }
 

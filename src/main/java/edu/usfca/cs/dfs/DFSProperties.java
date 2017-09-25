@@ -40,4 +40,8 @@ public class DFSProperties {
     public String getStorageNodeChunksDir() {
         return properties.getProperty("storage-node-chunks-dir");
     }
+
+    public int getMinReplicas() {
+        return Integer.parseInt(properties.getProperty("min-replicas"));
+    }
 }

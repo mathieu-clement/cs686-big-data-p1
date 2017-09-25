@@ -31,4 +31,8 @@ public class DFSFile implements Comparable<DFSFile> {
     public int compareTo(DFSFile o) {
         return this.filename.compareTo(o.filename);
     }
+
+    public String getFilename() {
+        return filename;
+    }
 }

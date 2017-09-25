@@ -86,7 +86,7 @@ public class FileTable {
         // Remove files that have no chunks
         for (DFSFile file : modifiedFiles) {
             if (file.getChunkCount() == 0) {
-                files.remove(file);
+                files.remove(file.getFilename());
             }
         }
     }

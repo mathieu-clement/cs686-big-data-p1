@@ -199,4 +199,8 @@ public class Chunk implements Comparable<Chunk> {
         }
         return Integer.compare(this.sequenceNo, o.sequenceNo);
     }
+
+    public String getChecksum() {
+        return checksum;
+    }
 }

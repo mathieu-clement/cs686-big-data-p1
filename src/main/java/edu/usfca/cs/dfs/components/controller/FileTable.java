@@ -1,6 +1,7 @@
 package edu.usfca.cs.dfs.components.controller;
 
 import edu.usfca.cs.dfs.DFSProperties;
+import edu.usfca.cs.dfs.structures.ComponentAddress;
 
 import java.util.*;
 
@@ -22,12 +23,13 @@ public class FileTable {
         List all files by name -> getFilenames()
         List chunk sizes and locations and number of replica -> getFile()
         List all chunks that need to be replicated, incl. current location of replicas
-        TODO: Remove all replicas from a storage node that became offline
+        Remove all replicas from a storage node that became offline
         TODO: Add all replicas from a storage that became online
      */
 
     private final Map<String, DFSFile> files = new HashMap<>();
 
+    // sorted
     public SortedSet<String> getFilenames() {
         return new TreeSet<>(files.keySet());
     }
@@ -47,5 +49,16 @@ public class FileTable {
             }
         }
         return chunks;
+    }
+
+    public void onStorageNodeOffline(ComponentAddress storageNode) {
+        for (DFSFile file : files.values()) {
+            for (ChunkRef chunk : file.getChunks()) {
+                Set<ComponentAddress> locations = chunk.getReplicaLocations();
+                if (locations.contains(storageNode)) {
+                    locations.remove(storageNode);
+                }
+            }
+        }
     }
 }

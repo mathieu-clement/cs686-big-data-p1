@@ -37,5 +37,6 @@ class UtilsTest {
         file.delete();
 
         assertEquals(expectedSum, actualSum);
+
     }
 }

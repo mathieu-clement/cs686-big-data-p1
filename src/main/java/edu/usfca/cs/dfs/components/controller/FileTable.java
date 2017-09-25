@@ -61,4 +61,19 @@ public class FileTable {
             }
         }
     }
+
+    public void publishChunk(String filename, int sequenceNo, int chunkSize, ComponentAddress storageNode) {
+        if (!files.containsKey(filename)) {
+            files.put(filename, new DFSFile(filename));
+        }
+
+        DFSFile file = files.get(filename);
+        if (!file.hasChunk(sequenceNo)) {
+            file.addChunk(new ChunkRef(filename, sequenceNo, chunkSize));
+        }
+        Set<ComponentAddress> replicaLocations = file.getChunk(sequenceNo).getReplicaLocations();
+        if (!replicaLocations.contains(storageNode)) {
+            replicaLocations.add(storageNode);
+        }
+    }
 }

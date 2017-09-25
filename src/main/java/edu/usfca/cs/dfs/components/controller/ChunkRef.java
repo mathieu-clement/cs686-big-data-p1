@@ -2,6 +2,7 @@ package edu.usfca.cs.dfs.components.controller;
 
 import edu.usfca.cs.dfs.structures.ComponentAddress;
 
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -39,5 +40,27 @@ public class ChunkRef implements Comparable<ChunkRef> {
 
     public long getSize() {
         return size;
+    }
+
+    public String getFilename() {
+        return filename;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ChunkRef chunkRef = (ChunkRef) o;
+        return sequenceNo == chunkRef.sequenceNo &&
+                Objects.equals(filename, chunkRef.filename);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(filename, sequenceNo);
+    }
+
+    public int getSequenceNo() {
+        return sequenceNo;
     }
 }

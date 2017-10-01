@@ -26,36 +26,44 @@ class ProcessIncomingMessageRunnable implements Runnable {
                 Messages.MessageWrapper msgWrapper = Messages.MessageWrapper.parseDelimitedFrom(socket.getInputStream());
 
                 if (msgWrapper.hasHeartbeatMsg()) {
-                    Messages.Heartbeat msg = msgWrapper.getHeartbeatMsg();
-                    ComponentAddress storageNodeAddress = new ComponentAddress(
-                            msg.getStorageNodeHost(),
-                            msg.getStorageNodePort());
-
-                    Map<String, SortedSet<Integer>> fileChunks = toFileChunksMap(msg.getFileChunksList());
-
-                    logger.trace("Received heartbeat from " + storageNodeAddress + " with file chunks: " + fileChunks);
-                    onlineStorageNodes.add(storageNodeAddress);
+                    processHeartbeatMsg(msgWrapper);
                 } else if (msgWrapper.hasGetStoragesNodesRequestMsg()) {
-                    List<Messages.GetStorageNodesResponse.StorageNode> msgStorageNodeList = new ArrayList<>(onlineStorageNodes.size());
-                    for (ComponentAddress onlineStorageNode : onlineStorageNodes) {
-                        msgStorageNodeList.add(Messages.GetStorageNodesResponse.StorageNode.newBuilder()
-                                .setHost(onlineStorageNode.getHost())
-                                .setPort(onlineStorageNode.getPort())
-                                .build()
-                        );
-                    }
-                    Messages.GetStorageNodesResponse storageNodesResponse = Messages.GetStorageNodesResponse.newBuilder()
-                            .addAllNodes(msgStorageNodeList)
-                            .build();
-                    Messages.MessageWrapper responseMsgWrapper = Messages.MessageWrapper.newBuilder()
-                            .setGetStorageNodesResponseMsg(storageNodesResponse)
-                            .build();
-                    responseMsgWrapper.writeDelimitedTo(socket.getOutputStream());
+                    processGetStorageNodesRequestMsg();
                 }
             } catch (IOException e) {
                 logger.error("Error reading from heartbeat socket", e);
             }
         }
+    }
+
+    private void processGetStorageNodesRequestMsg() throws IOException {
+        List<Messages.GetStorageNodesResponse.StorageNode> msgStorageNodeList = new ArrayList<>(onlineStorageNodes.size());
+        for (ComponentAddress onlineStorageNode : onlineStorageNodes) {
+            msgStorageNodeList.add(Messages.GetStorageNodesResponse.StorageNode.newBuilder()
+                    .setHost(onlineStorageNode.getHost())
+                    .setPort(onlineStorageNode.getPort())
+                    .build()
+            );
+        }
+        Messages.GetStorageNodesResponse storageNodesResponse = Messages.GetStorageNodesResponse.newBuilder()
+                .addAllNodes(msgStorageNodeList)
+                .build();
+        Messages.MessageWrapper responseMsgWrapper = Messages.MessageWrapper.newBuilder()
+                .setGetStorageNodesResponseMsg(storageNodesResponse)
+                .build();
+        responseMsgWrapper.writeDelimitedTo(socket.getOutputStream());
+    }
+
+    private void processHeartbeatMsg(Messages.MessageWrapper msgWrapper) {
+        Messages.Heartbeat msg = msgWrapper.getHeartbeatMsg();
+        ComponentAddress storageNodeAddress = new ComponentAddress(
+                msg.getStorageNodeHost(),
+                msg.getStorageNodePort());
+
+        Map<String, SortedSet<Integer>> fileChunks = toFileChunksMap(msg.getFileChunksList());
+
+        logger.trace("Received heartbeat from " + storageNodeAddress + " with file chunks: " + fileChunks);
+        onlineStorageNodes.add(storageNodeAddress);
     }
 
     private Map<String, SortedSet<Integer>> toFileChunksMap(List<Messages.Heartbeat.FileChunks> pbFileChunks) {

@@ -97,12 +97,10 @@ public class FileTable {
      *
      * @param filename    name of whole file originally received from client
      * @param sequenceNo  chunk sequence number
-     * @param chunkSize   size of chunk
      * @param storageNode storage node that has that chunk
      */
     public void publishChunk(String filename,
                              int sequenceNo,
-                             int chunkSize,
                              ComponentAddress storageNode) {
         if (!files.containsKey(filename)) {
             files.put(filename, new DFSFile(filename));
@@ -110,7 +108,7 @@ public class FileTable {
 
         DFSFile file = files.get(filename);
         if (!file.hasChunk(sequenceNo)) {
-            file.addChunk(new ChunkRef(filename, sequenceNo, chunkSize));
+            file.addChunk(new ChunkRef(filename, sequenceNo));
         }
         Set<ComponentAddress> replicaLocations = file.getChunk(sequenceNo).getReplicaLocations();
         if (!replicaLocations.contains(storageNode)) {

@@ -13,13 +13,11 @@ import java.util.TreeSet;
 public class ChunkRef implements Comparable<ChunkRef> {
     private final String filename;
     private final int sequenceNo;
-    private final long size;
     private Set<ComponentAddress> replicaLocations = new TreeSet<>();
 
-    public ChunkRef(String filename, int sequenceNo, long size) {
+    public ChunkRef(String filename, int sequenceNo) {
         this.filename = filename;
         this.sequenceNo = sequenceNo;
-        this.size = size;
     }
 
     public int getReplicaCount() {
@@ -36,10 +34,6 @@ public class ChunkRef implements Comparable<ChunkRef> {
             return this.filename.compareTo(o.filename);
         }
         return Integer.compare(this.sequenceNo, o.sequenceNo);
-    }
-
-    public long getSize() {
-        return size;
     }
 
     public String getFilename() {

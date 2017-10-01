@@ -54,8 +54,8 @@ class HeartbeatRunnable implements Runnable {
         }
     }
 
-    private Collection<Messages.Heartbeat.FileChunks> getFileChunks() {
-        Set<Messages.Heartbeat.FileChunks> result = new HashSet<>();
+    private Collection<Messages.FileChunks> getFileChunks() {
+        Set<Messages.FileChunks> result = new HashSet<>();
         for (Map.Entry<String, SortedSet<Chunk>> entry : chunks.entrySet()) {
             String filename = entry.getKey();
             ArrayList<Integer> sequenceNos = new ArrayList<>(entry.getValue().size());
@@ -64,7 +64,7 @@ class HeartbeatRunnable implements Runnable {
                 sequenceNos.add(chunk.getSequenceNo());
             }
 
-            Messages.Heartbeat.FileChunks fileChunksMsg = Messages.Heartbeat.FileChunks.newBuilder()
+            Messages.FileChunks fileChunksMsg = Messages.FileChunks.newBuilder()
                     .setFilename(filename)
                     .addAllSequenceNos(sequenceNos)
                     .build();

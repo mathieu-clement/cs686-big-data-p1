@@ -20,14 +20,15 @@ message UploadFile {
     string fileName = 1;
 }
 
+message FileChunks {
+    string filename = 1;
+    repeated int32 sequenceNos = 2;
+}
+
 message Heartbeat {
     string storageNodeHost = 1;
     int32 storageNodePort = 2;
 
-    message FileChunks {
-        string filename = 1;
-        repeated int32 sequenceNos = 2;
-    }
     repeated FileChunks fileChunks = 3;
 }
 
@@ -35,12 +36,19 @@ message GetStorageNodesRequest {
 
 }
 
+message StorageNode {
+    string host = 1;
+    int32 port = 2;
+}
+
 message GetStorageNodesResponse {
-    message StorageNode {
-        string host = 1;
-        int32 port = 2;
-    }
     repeated StorageNode nodes = 4;
+}
+
+// Controller orders one storage node to send a chunk to another storage node
+message OrderSendChunk {
+    StorageNode storageNode = 1;
+    FileChunks fileChunks = 2;
 }
 
 message MessageWrapper {
@@ -52,5 +60,6 @@ message MessageWrapper {
         Heartbeat heartbeatMsg = 5;
         GetStorageNodesRequest getStoragesNodesRequestMsg = 6;
         GetStorageNodesResponse getStorageNodesResponseMsg = 7;
+        OrderSendChunk orderSendChunkMsg = 8;
     }
 }

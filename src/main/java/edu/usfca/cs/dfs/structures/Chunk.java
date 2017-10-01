@@ -28,8 +28,7 @@ public class Chunk implements Comparable<Chunk> {
         this.chunkLocalPath = chunkLocalPath;
     }
 
-    public static Chunk[] createChunksFromFile(
-            String filename, long chunkSize, String outputDirectory)
+    public static Chunk[] createChunksFromFile(String filename, long chunkSize, String outputDirectory)
             throws IOException {
 
         File file = new File(filename);

@@ -14,9 +14,12 @@ import java.io.IOException;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.Semaphore;
 
 public class Client {
+
+    private static final Random random = new Random();
 
     private static final Logger logger = LoggerFactory.getLogger(Client.class);
 
@@ -49,7 +52,7 @@ public class Client {
             storageNodeAddressesAvailableSema.release();
         }
 
-        int storageNodeIndex = 0;
+        int storageNodeIndex = random.nextInt(storageNodeAddresses.size());
         int nbStorageNodes = storageNodeAddresses.size();
 
         Chunk[] chunks = Chunk.createChunksFromFile(
@@ -97,15 +100,15 @@ public class Client {
         }
     }
 
-    static List<ComponentAddress> toComponentAddresses(List<Messages.GetStorageNodesResponse.StorageNode> list) {
+    static List<ComponentAddress> toComponentAddresses(List<Messages.StorageNode> list) {
         List<ComponentAddress> addresses = new ArrayList<>(list.size());
-        for (Messages.GetStorageNodesResponse.StorageNode storageNode : list) {
+        for (Messages.StorageNode storageNode : list) {
             addresses.add(toComponentAddress(storageNode));
         }
         return addresses;
     }
 
-    private static ComponentAddress toComponentAddress(Messages.GetStorageNodesResponse.StorageNode node) {
+    private static ComponentAddress toComponentAddress(Messages.StorageNode node) {
         return new ComponentAddress(node.getHost(), node.getPort());
     }
 

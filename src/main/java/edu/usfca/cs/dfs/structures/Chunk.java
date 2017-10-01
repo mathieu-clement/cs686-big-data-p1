@@ -226,12 +226,6 @@ public class Chunk implements Comparable<Chunk> {
 
     @Override
     public String toString() {
-        return "Chunk{" +
-                "filename='" + filename + '\'' +
-                ", sequenceNo=" + sequenceNo +
-                ", size=" + size +
-                ", checksum='" + checksum + '\'' +
-                ", chunkLocalPath=" + chunkLocalPath +
-                '}';
+        return "Chunk[" + chunkLocalPath.toFile().getName() + "]";
     }
 }

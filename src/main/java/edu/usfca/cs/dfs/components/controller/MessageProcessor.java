@@ -12,10 +12,12 @@ import java.util.*;
 class MessageProcessor implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(MessageProcessor.class);
     private final Set<ComponentAddress> onlineStorageNodes;
+    private final FileTable fileTable;
     private final Socket socket;
 
-    public MessageProcessor(Set<ComponentAddress> onlineStorageNodes, Socket socket) {
+    public MessageProcessor(Set<ComponentAddress> onlineStorageNodes, FileTable fileTable, Socket socket) {
         this.onlineStorageNodes = onlineStorageNodes;
+        this.fileTable = fileTable;
         this.socket = socket;
     }
 
@@ -37,9 +39,9 @@ class MessageProcessor implements Runnable {
     }
 
     private void processGetStorageNodesRequestMsg() throws IOException {
-        List<Messages.GetStorageNodesResponse.StorageNode> msgStorageNodeList = new ArrayList<>(onlineStorageNodes.size());
+        List<Messages.StorageNode> msgStorageNodeList = new ArrayList<>(onlineStorageNodes.size());
         for (ComponentAddress onlineStorageNode : onlineStorageNodes) {
-            msgStorageNodeList.add(Messages.GetStorageNodesResponse.StorageNode.newBuilder()
+            msgStorageNodeList.add(Messages.StorageNode.newBuilder()
                     .setHost(onlineStorageNode.getHost())
                     .setPort(onlineStorageNode.getPort())
                     .build()
@@ -61,14 +63,19 @@ class MessageProcessor implements Runnable {
                 msg.getStorageNodePort());
 
         Map<String, SortedSet<Integer>> fileChunks = toFileChunksMap(msg.getFileChunksList());
+        for (Map.Entry<String, SortedSet<Integer>> entry : fileChunks.entrySet()) {
+            String filename = entry.getKey();
+            SortedSet<Integer> sequenceNos = entry.getValue();
+            //fileTable.publishChunk();
+        }
 
         logger.trace("Received heartbeat from " + storageNodeAddress + " with file chunks: " + fileChunks);
         onlineStorageNodes.add(storageNodeAddress);
     }
 
-    private Map<String, SortedSet<Integer>> toFileChunksMap(List<Messages.Heartbeat.FileChunks> pbFileChunks) {
+    private Map<String, SortedSet<Integer>> toFileChunksMap(List<Messages.FileChunks> pbFileChunks) {
         Map<String, SortedSet<Integer>> result = new HashMap<>();
-        for (Messages.Heartbeat.FileChunks pbFileChunk : pbFileChunks) {
+        for (Messages.FileChunks pbFileChunk : pbFileChunks) {
             String filename = pbFileChunk.getFilename();
             TreeSet<Integer> sequenceNos = new TreeSet<>(pbFileChunk.getSequenceNosList());
             result.put(filename, sequenceNos);

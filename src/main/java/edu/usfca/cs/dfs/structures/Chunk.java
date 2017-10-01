@@ -223,4 +223,15 @@ public class Chunk implements Comparable<Chunk> {
     public String getChecksum() {
         return checksum;
     }
+
+    @Override
+    public String toString() {
+        return "Chunk{" +
+                "filename='" + filename + '\'' +
+                ", sequenceNo=" + sequenceNo +
+                ", size=" + size +
+                ", checksum='" + checksum + '\'' +
+                ", chunkLocalPath=" + chunkLocalPath +
+                '}';
+    }
 }

@@ -1,15 +1,28 @@
 package edu.usfca.cs.dfs.components.storageNode;
 
+import edu.usfca.cs.dfs.DFSProperties;
+import edu.usfca.cs.dfs.exceptions.ChecksumException;
 import edu.usfca.cs.dfs.structures.Chunk;
 import edu.usfca.cs.dfs.structures.ComponentAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
-import java.util.*;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.SortedSet;
+import java.util.TreeSet;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class StorageNode {
 
@@ -21,11 +34,62 @@ public class StorageNode {
     private final ComponentAddress controllerAddr;
 
     // Map of chunks. Key is filename.
-    private final Map<String, SortedSet<Chunk>> chunks = new HashMap<>();
+    private final Map<String, SortedSet<Chunk>> chunks;
 
-    public StorageNode(int port, ComponentAddress controllerAddr) {
+    public StorageNode(int port, ComponentAddress controllerAddr) throws IOException {
         this.port = port;
         this.controllerAddr = controllerAddr;
+        this.chunks = readChunks();
+    }
+
+    public static void addToChunks(Chunk chunk, Map<String, SortedSet<Chunk>> chunks) {
+        String filename = chunk.getFilename();
+        if (chunks.get(filename) == null) {
+            chunks.put(filename, new TreeSet<Chunk>());
+        }
+        chunks.get(filename).add(chunk);
+    }
+
+    private Map<String, SortedSet<Chunk>> readChunks() throws IOException {
+        Map<String, SortedSet<Chunk>> result = new HashMap<>();
+        Path chunksPath = Paths.get(DFSProperties.getInstance().getStorageNodeChunksDir());
+        File chunksDirFile = chunksPath.toFile();
+        Pattern chunkFileNamePattern = Pattern.compile("(.*?)-chunk([0-9]+)");
+
+        if (!chunksDirFile.exists()) return result;
+        if (!chunksDirFile.isDirectory()) throw new IllegalArgumentException("Chunks directory is a regular file");
+        DirectoryStream<Path> directoryStream = Files.newDirectoryStream(chunksPath);
+        for (Path path : directoryStream) {
+            // Ignore md5 files
+            if (path.toString().endsWith(".md5")) continue;
+
+            // Extract info from name
+            File chunkFile = path.toFile();
+            Matcher matcher = chunkFileNamePattern.matcher(chunkFile.getName());
+            if (!matcher.find()) {
+                throw new IllegalArgumentException("Malformed chunk file name " + chunkFile.getName());
+            }
+            String originalFileName = matcher.group(1);
+            int sequenceNo = Integer.parseInt(matcher.group(2));
+
+            // Create chunk
+            Chunk chunk = new Chunk(originalFileName, sequenceNo, chunkFile.length(), path);
+            chunk.calculateAndSetChecksum();
+            String actualChecksum = chunk.getChecksum();
+
+            // Check sum
+            Path checksumFilePath = Paths.get(path.toString() + ".md5");
+            String expectedChecksum = new String(Files.readAllBytes(checksumFilePath)).split(" ")[0];
+            if (!actualChecksum.equals(expectedChecksum)) {
+                throw new ChecksumException(chunkFile, expectedChecksum, actualChecksum);
+            }
+
+            addToChunks(chunk, result);
+        }
+
+        logger.debug("Chunks at startup: " + result);
+
+        return result;
     }
 
     public static void main(String[] args)

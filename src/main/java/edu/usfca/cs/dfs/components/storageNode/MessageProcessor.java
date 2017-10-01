@@ -17,7 +17,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
 import java.util.SortedSet;
-import java.util.TreeSet;
 
 class MessageProcessor implements Runnable {
 
@@ -94,9 +93,6 @@ class MessageProcessor implements Runnable {
 
     private void addToChunkList(String fileName, int sequenceNo, String checksum, Path chunkFilePath) throws IOException {
         Chunk chunk = new Chunk(fileName, sequenceNo, Files.size(chunkFilePath), checksum, chunkFilePath);
-        if (chunks.get(fileName) == null) {
-            chunks.put(fileName, new TreeSet<Chunk>());
-        }
-        chunks.get(fileName).add(chunk);
+        StorageNode.addToChunks(chunk, chunks);
     }
 }

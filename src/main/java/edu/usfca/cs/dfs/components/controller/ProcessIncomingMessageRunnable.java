@@ -31,7 +31,7 @@ class ProcessIncomingMessageRunnable implements Runnable {
                     processGetStorageNodesRequestMsg();
                 }
             } catch (IOException e) {
-                logger.error("Error reading from heartbeat socket", e);
+                logger.error("Error reading from socket", e);
             }
         }
     }

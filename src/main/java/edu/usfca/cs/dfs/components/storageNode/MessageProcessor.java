@@ -17,13 +17,13 @@ import java.util.Map;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
-class ProcessMessageRunnable implements Runnable {
+class MessageProcessor implements Runnable {
 
-    private final static Logger logger = LoggerFactory.getLogger(ProcessMessageRunnable.class);
+    private final static Logger logger = LoggerFactory.getLogger(MessageProcessor.class);
     private final Socket socket;
     private final Map<String, SortedSet<Chunk>> chunks;
 
-    public ProcessMessageRunnable(Socket socket, Map<String, SortedSet<Chunk>> chunks) {
+    public MessageProcessor(Socket socket, Map<String, SortedSet<Chunk>> chunks) {
         this.socket = socket;
         this.chunks = chunks;
     }

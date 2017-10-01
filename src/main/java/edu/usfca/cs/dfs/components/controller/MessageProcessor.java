@@ -9,12 +9,12 @@ import java.io.IOException;
 import java.net.Socket;
 import java.util.*;
 
-class ProcessIncomingMessageRunnable implements Runnable {
-    private static final Logger logger = LoggerFactory.getLogger(ProcessIncomingMessageRunnable.class);
+class MessageProcessor implements Runnable {
+    private static final Logger logger = LoggerFactory.getLogger(MessageProcessor.class);
     private final Set<ComponentAddress> onlineStorageNodes;
     private final Socket socket;
 
-    public ProcessIncomingMessageRunnable(Set<ComponentAddress> onlineStorageNodes, Socket socket) {
+    public MessageProcessor(Set<ComponentAddress> onlineStorageNodes, Socket socket) {
         this.onlineStorageNodes = onlineStorageNodes;
         this.socket = socket;
     }

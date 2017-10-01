@@ -63,7 +63,7 @@ public class StorageNode {
         logger.debug("Listening on port " + port + "...");
         while (true) {
             Socket socket = srvSocket.accept();
-            new Thread(new ProcessMessageRunnable(socket, chunks)).start();
+            new Thread(new MessageProcessor(socket, chunks)).start();
         }
     }
 

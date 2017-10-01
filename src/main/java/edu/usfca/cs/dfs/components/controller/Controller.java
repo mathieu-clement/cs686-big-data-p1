@@ -39,7 +39,7 @@ public class Controller {
         ServerSocket serverSocket = new ServerSocket(port);
         while (true) {
             Socket socket = serverSocket.accept();
-            new Thread(new ProcessIncomingMessageRunnable(onlineStorageNodes, socket)).start();
+            new Thread(new MessageProcessor(onlineStorageNodes, socket)).start();
         }
     }
 

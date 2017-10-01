@@ -4,7 +4,6 @@ import edu.usfca.cs.dfs.Utils;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.SortedSet;
@@ -39,7 +38,7 @@ public class ChunkTest {
     void testCreateChunksFromFile() throws IOException {
         String inputFilename = "/tmp/input_file";
         String inputString = "Hello, my name is R2-D2.\n";
-        writeStringToFile(inputFilename, inputString);
+        Utils.writeStringToFile(inputFilename, inputString);
 
         String outputDirectory = "/tmp/chunks";
         File outputDirectoryFile = new File(outputDirectory);
@@ -67,12 +66,6 @@ public class ChunkTest {
         }
     }
 
-    public static void writeStringToFile(String filename, String str) throws IOException {
-        FileWriter inputFileWriter = new FileWriter(filename);
-        inputFileWriter.write(str);
-        inputFileWriter.close();
-    }
-
     private byte[] readBytesFromFile(File file) throws IOException {
         return Files.readAllBytes(file.toPath());
     }
@@ -86,7 +79,7 @@ public class ChunkTest {
         for (int i = 0; i < nbChunks; ++i) {
             File chunkFile = File.createTempFile("chunktest", "chunk" + i);
             String content = "content" + i;
-            writeStringToFile(chunkFile.getAbsolutePath(), content);
+            Utils.writeStringToFile(chunkFile.getAbsolutePath(), content);
             Chunk chunk = new Chunk("theFilename", i, content.getBytes().length, Utils.md5sum(chunkFile), chunkFile.toPath());
             chunks.add(chunk);
             sb.append(content);

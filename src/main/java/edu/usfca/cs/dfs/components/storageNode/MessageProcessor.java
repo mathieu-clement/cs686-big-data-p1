@@ -1,6 +1,8 @@
 package edu.usfca.cs.dfs.components.storageNode;
 
 import edu.usfca.cs.dfs.DFSProperties;
+import edu.usfca.cs.dfs.Utils;
+import edu.usfca.cs.dfs.exceptions.ChecksumException;
 import edu.usfca.cs.dfs.messages.Messages;
 import edu.usfca.cs.dfs.structures.Chunk;
 import org.slf4j.Logger;
@@ -59,18 +61,35 @@ class MessageProcessor implements Runnable {
             }
         }
 
-        Path chunkFilePath = Paths.get(storageDirectory, storeChunkMsg.getFileName() + "-chunk" + storeChunkMsg.getSequenceNo());
+        // Store chunk file
+        String chunkFilename = storeChunkMsg.getFileName() + "-chunk" + storeChunkMsg.getSequenceNo();
+        Path chunkFilePath = Paths.get(storageDirectory, chunkFilename);
         File chunkFile = chunkFilePath.toFile();
         if (chunkFile.exists()) {
-            throw new IllegalStateException("There is already a chunk file named " + chunkFile.getName());
+            if (!chunkFile.delete()) {
+                throw new RuntimeException("Unable to delete existing file before overwriting");
+            }
         }
         logger.debug("Storing to file " + chunkFilePath);
         FileOutputStream fos = new FileOutputStream(chunkFile);
         storeChunkMsg.getData().writeTo(fos);
         fos.close();
-        // TODO Check sum
 
+        // Store checksum
+        checkSum(chunkFile, storeChunkMsg.getChecksum());
+        Path checksumFilePath = Paths.get(storageDirectory, chunkFilename + ".md5");
+        logger.debug("Storing checksum on disk to file " + checksumFilePath);
+        Utils.writeStringToFile(checksumFilePath.toString(), storeChunkMsg.getChecksum() + "  " + chunkFilename + "\n");
+
+        // Update program state
         addToChunkList(storeChunkMsg.getFileName(), storeChunkMsg.getSequenceNo(), storeChunkMsg.getChecksum(), chunkFilePath);
+    }
+
+    private void checkSum(File file, String expectedChecksum) throws IOException {
+        String actualChecksum = Utils.md5sum(file);
+        if (!actualChecksum.equals(expectedChecksum)) {
+            throw new ChecksumException(file, expectedChecksum, actualChecksum);
+        }
     }
 
     private void addToChunkList(String fileName, int sequenceNo, String checksum, Path chunkFilePath) throws IOException {

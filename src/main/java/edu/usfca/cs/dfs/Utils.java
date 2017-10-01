@@ -2,6 +2,7 @@ package edu.usfca.cs.dfs;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.security.MessageDigest;
@@ -49,5 +50,11 @@ public class Utils {
             sb.append(String.format("%02x", b));
         }
         return sb.toString();
+    }
+
+    public static void writeStringToFile(String filename, String str) throws IOException {
+        FileWriter inputFileWriter = new FileWriter(filename);
+        inputFileWriter.write(str);
+        inputFileWriter.close();
     }
 }

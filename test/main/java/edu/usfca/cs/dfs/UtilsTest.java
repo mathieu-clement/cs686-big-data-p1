@@ -1,6 +1,5 @@
 package edu.usfca.cs.dfs;
 
-import edu.usfca.cs.dfs.structures.ChunkTest;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
@@ -32,7 +31,7 @@ class UtilsTest {
         String expectedSum = "bbc3b8f636bbcf0b994f0698d25ca85c";
 
         File file = File.createTempFile("md5sumtest", "icecream");
-        ChunkTest.writeStringToFile(file.getAbsolutePath(), content);
+        Utils.writeStringToFile(file.getAbsolutePath(), content);
         String actualSum = Utils.md5sum(file);
         file.delete();
 

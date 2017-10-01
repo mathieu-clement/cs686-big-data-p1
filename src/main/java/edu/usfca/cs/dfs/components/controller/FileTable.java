@@ -91,7 +91,19 @@ public class FileTable {
         }
     }
 
-    public void publishChunk(String filename, int sequenceNo, int chunkSize, ComponentAddress storageNode) {
+    /**
+     * Announce to the filetable that a certain storage node has got a
+     * particular chunk.
+     *
+     * @param filename    name of whole file originally received from client
+     * @param sequenceNo  chunk sequence number
+     * @param chunkSize   size of chunk
+     * @param storageNode storage node that has that chunk
+     */
+    public void publishChunk(String filename,
+                             int sequenceNo,
+                             int chunkSize,
+                             ComponentAddress storageNode) {
         if (!files.containsKey(filename)) {
             files.put(filename, new DFSFile(filename));
         }

@@ -13,14 +13,18 @@ public class Chunk implements Comparable<Chunk> {
     private final String filename;
     private final int sequenceNo;
     private final long size;
-    private final String checksum;
+    private String checksum;
     private final Path chunkLocalPath;
 
     public Chunk(String filename, int sequenceNo, long size, String checksum, Path chunkLocalPath) {
+        this(filename, sequenceNo, size, chunkLocalPath);
+        this.checksum = checksum;
+    }
+
+    public Chunk(String filename, int sequenceNo, long size, Path chunkLocalPath) {
         this.filename = filename;
         this.sequenceNo = sequenceNo;
         this.size = size;
-        this.checksum = checksum;
         this.chunkLocalPath = chunkLocalPath;
     }
 
@@ -33,7 +37,38 @@ public class Chunk implements Comparable<Chunk> {
         long totalSize = checkFileNotEmpty(file);
         fis.close();
         int numberOfChunks = calculateNumberOfChunks(totalSize, chunkSize);
+        createDirectoryIfNotExists(outputDirectory);
         return doCreateChunksFromFile(file, totalSize, numberOfChunks, chunkSize, outputDirectory);
+    }
+
+    private static void createDirectoryIfNotExists(String directory) {
+        File dirFile = new File(directory);
+        if (!dirFile.exists()) {
+            if (!dirFile.mkdir()) {
+                throw new RuntimeException("Couldn't create directory " + directory);
+            }
+        }
+    }
+
+    private static Chunk[] doCreateChunksFromFile(File file, long fileSize, int numberOfChunks, long defaultChunkSize, String outputDirectory) throws IOException {
+        Chunk[] chunks = new Chunk[numberOfChunks];
+        int lastSequenceNo = numberOfChunks - 1;
+
+        FileInputStream fis = new FileInputStream(file);
+
+        for (int i = 0; i < lastSequenceNo; i++) {
+            Path chunkLocalPath = makeChunkFilePath(file, i, outputDirectory);
+            chunks[i] = new Chunk(file.getName(), i, defaultChunkSize, chunkLocalPath);
+            writeToChunkFile(fis, chunkLocalPath, defaultChunkSize);
+            chunks[i].calculateAndSetChecksum();
+        }
+
+        long lastChunkSize = calculateLastChunkSize(numberOfChunks, defaultChunkSize, fileSize);
+        Path lastChunkFilePath = makeChunkFilePath(file, lastSequenceNo, outputDirectory);
+        chunks[lastSequenceNo] = new Chunk(file.getName(), lastSequenceNo, lastChunkSize, lastChunkFilePath);
+        writeToChunkFile(fis, lastChunkFilePath, lastChunkSize);
+        chunks[lastSequenceNo].calculateAndSetChecksum();
+        return chunks;
     }
 
     public static File createFileFromChunks(SortedSet<Chunk> chunks, String outputFilePathname) throws IOException {
@@ -104,23 +139,8 @@ public class Chunk implements Comparable<Chunk> {
         return totalSize;
     }
 
-    private static Chunk[] doCreateChunksFromFile(File file, long fileSize, int numberOfChunks, long defaultChunkSize, String outputDirectory) throws IOException {
-        Chunk[] chunks = new Chunk[numberOfChunks];
-        int lastSequenceNo = numberOfChunks - 1;
-
-        FileInputStream fis = new FileInputStream(file);
-
-        for (int i = 0; i < lastSequenceNo; i++) {
-            Path chunkLocalPath = makeChunkFilePath(file, i, outputDirectory);
-            chunks[i] = new Chunk(file.getName(), i, defaultChunkSize, md5sum(chunkLocalPath), chunkLocalPath);
-            writeToChunkFile(fis, chunkLocalPath, defaultChunkSize);
-        }
-
-        long lastChunkSize = calculateLastChunkSize(numberOfChunks, defaultChunkSize, fileSize);
-        Path lastChunkFilePath = makeChunkFilePath(file, lastSequenceNo, outputDirectory);
-        chunks[lastSequenceNo] = new Chunk(file.getName(), lastSequenceNo, lastChunkSize, md5sum(lastChunkFilePath), lastChunkFilePath);
-        writeToChunkFile(fis, lastChunkFilePath, lastChunkSize);
-        return chunks;
+    public void calculateAndSetChecksum() throws IOException {
+        this.checksum = md5sum(chunkLocalPath);
     }
 
     private static void writeToChunkFile(FileInputStream fis, Path chunkFilePath, long chunkSize) throws IOException {

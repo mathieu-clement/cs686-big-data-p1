@@ -14,42 +14,43 @@ import java.io.IOException;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Semaphore;
 
 public class Client {
 
     private static final Logger logger = LoggerFactory.getLogger(Client.class);
 
+    private static Semaphore storageNodeAddressesAvailableSema = new Semaphore(0);
+
     public static void main(String[] args) throws Exception {
 
-        if (args.length < 4) {
-            System.err.println("Usage: Client controller-host controller-port fileToSend storageNode1:port [storageNode2:port]...");
+        if (args.length != 3) {
+            System.err.println("Usage: Client controller-host controller-port fileToSend");
             System.exit(1);
         }
 
         ComponentAddress controllerAddr = new ComponentAddress(args[0], Integer.parseInt(args[1]));
         String filename = args[2];
-        ComponentAddress[] storageNodeAddresses = parseStorageNodeAddressesFromArgs(3, args);
+        GetStorageNodeListRunnable storageNodeListRunnable = new GetStorageNodeListRunnable(controllerAddr, storageNodeAddressesAvailableSema);
+        new Thread(storageNodeListRunnable).start();
 
-        new Thread(new GetStorageNodeListRunnable(controllerAddr)).start();
-
-
-        sendChunkedSampleFile(filename, storageNodeAddresses);
+        sendChunkedSampleFile(filename, storageNodeListRunnable);
     }
 
-    private static ComponentAddress[] parseStorageNodeAddressesFromArgs(int startIndex, String[] args) {
-        int nbStorageNodes = args.length - startIndex;
-        ComponentAddress[] storageNodeAddresses = new ComponentAddress[nbStorageNodes];
-        for (int i = startIndex; i < args.length; i++) {
-            String[] split = args[i].split(":");
-            storageNodeAddresses[i - startIndex] = new ComponentAddress(split[0], Integer.parseInt(split[1]));
+    private static void sendChunkedSampleFile(String filename, GetStorageNodeListRunnable storageNodeListRunnable) throws IOException, InterruptedException {
+
+        List<ComponentAddress> storageNodeAddresses;
+
+        try {
+            while ((storageNodeAddresses = storageNodeListRunnable.getStorageNodeAddresses()) == null) {
+                storageNodeAddressesAvailableSema.acquire();
+            }
+        } finally {
+            storageNodeAddressesAvailableSema.release();
         }
-        return storageNodeAddresses;
-    }
-
-    private static void sendChunkedSampleFile(String filename, ComponentAddress... storageNodeAddresses) throws IOException {
 
         int storageNodeIndex = 0;
-        int nbStorageNodes = storageNodeAddresses.length;
+        int nbStorageNodes = storageNodeAddresses.size();
 
         Chunk[] chunks = Chunk.createChunksFromFile(
                 filename,
@@ -60,7 +61,7 @@ public class Client {
             storageNodeIndex = i;
             logger.trace("Will send chunk " + chunk.getSequenceNo() + " to node #" + i);
 
-            ComponentAddress storageNodeAddr = storageNodeAddresses[i];
+            ComponentAddress storageNodeAddr = storageNodeAddresses.get(i);
 
             logger.debug("Connecting to storage node " + storageNodeAddr);
             Socket sock = storageNodeAddr.getSocket();

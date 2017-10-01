@@ -26,22 +26,26 @@ public class DFSProperties {
     }
 
     public int getHeartbeatPeriod() {
-        return Integer.parseInt(properties.getProperty("heartbeat-period"));
+        return Integer.parseInt(getProperty("heartbeat-period"));
     }
 
     public long getChunkSize() {
-        return Long.parseLong(properties.getProperty("chunk-size"));
+        return Long.parseLong(getProperty("chunk-size"));
     }
 
     public String getClientChunksDir() {
-        return properties.getProperty("client-chunks-dir");
+        return getProperty("client-chunks-dir");
     }
 
     public String getStorageNodeChunksDir() {
-        return properties.getProperty("storage-node-chunks-dir");
+        return getProperty("storage-node-chunks-dir");
     }
 
     public int getMinReplicas() {
-        return Integer.parseInt(properties.getProperty("min-replicas"));
+        return Integer.parseInt(getProperty("min-replicas"));
+    }
+
+    private String getProperty(String name) {
+        return System.getProperty(name, properties.getProperty(name));
     }
 }

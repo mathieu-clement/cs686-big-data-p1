@@ -10,8 +10,11 @@ import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
 public class Utils {
-    public static <E> Set<E> chooseNrandom(int n, Set<E> set) {
+    public static <E> Set<E> chooseNrandomOrMin(int n, Set<E> set) {
         List<E> list = new ArrayList<>(set);
+        if (n >= list.size()) {
+            return new HashSet<>(set);
+        }
         Collections.shuffle(list);
         return new HashSet<>(list.subList(0, n));
     }

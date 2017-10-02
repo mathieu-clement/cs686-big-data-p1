@@ -17,7 +17,7 @@ class UtilsTest {
         int n = 3;
         Set<Integer> set = new HashSet<>(Arrays.asList(1, 2, 3, 4, 5));
 
-        Set<Integer> random = Utils.chooseNrandom(n, set);
+        Set<Integer> random = Utils.chooseNrandomOrMin(n, set);
         assertEquals(n, random.size());
 
         for (Integer integer : random) {

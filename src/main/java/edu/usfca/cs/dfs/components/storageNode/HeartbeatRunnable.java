@@ -28,29 +28,39 @@ class HeartbeatRunnable implements Runnable {
 
     @Override
     public void run() {
-        try {
-            Socket socket = controllerAddr.getSocket();
-            int heartbeatPeriod = DFSProperties.getInstance().getHeartbeatPeriod();
+        int heartbeatPeriod = DFSProperties.getInstance().getHeartbeatPeriod();
 
-            while (true) {
-                Messages.Heartbeat heartbeatMsg = Messages.Heartbeat.newBuilder()
-                        .setStorageNodeHost(storageNodeAddr.getHost())
-                        .setStorageNodePort(storageNodeAddr.getPort())
-                        .addAllFileChunks(getFileChunks())
-                        .build();
-                Messages.MessageWrapper msgWrapper =
-                        Messages.MessageWrapper.newBuilder()
-                                .setHeartbeatMsg(heartbeatMsg)
-                                .build();
-                logger.trace("Sending heartbeat to controller " + controllerAddr);
-                msgWrapper.writeDelimitedTo(socket.getOutputStream());
+        while (true) {
+            try {
+                Socket socket = controllerAddr.getSocket();
 
-                Thread.sleep(heartbeatPeriod);
+                while (true) {
+                    Messages.Heartbeat heartbeatMsg = Messages.Heartbeat.newBuilder()
+                            .setStorageNodeHost(storageNodeAddr.getHost())
+                            .setStorageNodePort(storageNodeAddr.getPort())
+                            .addAllFileChunks(getFileChunks())
+                            .build();
+                    Messages.MessageWrapper msgWrapper =
+                            Messages.MessageWrapper.newBuilder()
+                                    .setHeartbeatMsg(heartbeatMsg)
+                                    .build();
+                    logger.trace("Sending heartbeat to controller " + controllerAddr);
+                    msgWrapper.writeDelimitedTo(socket.getOutputStream());
+
+                    Thread.sleep(heartbeatPeriod);
+                }
+            } catch (IOException e) {
+                logger.error("Could not create socket for heartbeat", e);
+            } catch (InterruptedException e) {
+                logger.warn("Couldn't sleep properly", e);
             }
-        } catch (IOException e) {
-            logger.error("Could not create socket for heartbeat", e);
-        } catch (InterruptedException e) {
-            logger.warn("Couldn't sleep properly", e);
+
+            // Retry if socket closed or writing to socket failed
+            try {
+                Thread.sleep(heartbeatPeriod);
+            } catch (InterruptedException e) {
+                logger.error("Interrupted while sleeping", heartbeatPeriod);
+            }
         }
     }
 

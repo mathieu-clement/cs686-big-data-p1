@@ -11,12 +11,16 @@ import java.util.*;
 
 class MessageProcessor implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(MessageProcessor.class);
+    private final Map<ComponentAddress, MessageFifoQueue> messageQueues;
     private final Set<ComponentAddress> onlineStorageNodes;
+    private StorageNodeAddressService storageNodeAddressService;
     private final FileTable fileTable;
     private final Socket socket;
 
-    public MessageProcessor(Set<ComponentAddress> onlineStorageNodes, FileTable fileTable, Socket socket) {
+    public MessageProcessor(StorageNodeAddressService storageNodeAddressService, Set<ComponentAddress> onlineStorageNodes, Map<ComponentAddress, MessageFifoQueue> messageQueues, FileTable fileTable, Socket socket) {
+        this.storageNodeAddressService = storageNodeAddressService;
         this.onlineStorageNodes = onlineStorageNodes;
+        this.messageQueues = messageQueues;
         this.fileTable = fileTable;
         this.socket = socket;
     }
@@ -36,6 +40,13 @@ class MessageProcessor implements Runnable {
                 logger.error("Error reading from socket", e);
             }
         }
+        removeFromMessageQueue();
+    }
+
+    private void removeFromMessageQueue() {
+        if (storageNodeAddressService.getStorageNodeAddress() != null) {
+            messageQueues.remove(storageNodeAddressService.getStorageNodeAddress());
+        }
     }
 
     private void processGetStorageNodesRequestMsg() throws IOException {
@@ -53,7 +64,11 @@ class MessageProcessor implements Runnable {
         Messages.MessageWrapper responseMsgWrapper = Messages.MessageWrapper.newBuilder()
                 .setGetStorageNodesResponseMsg(storageNodesResponse)
                 .build();
-        responseMsgWrapper.writeDelimitedTo(socket.getOutputStream());
+        send(responseMsgWrapper);
+    }
+
+    private void send(Messages.MessageWrapper msg) {
+        messageQueues.get(storageNodeAddressService.getStorageNodeAddress()).queue(msg);
     }
 
     private void processHeartbeatMsg(Messages.MessageWrapper msgWrapper) {
@@ -61,16 +76,27 @@ class MessageProcessor implements Runnable {
         ComponentAddress storageNodeAddress = new ComponentAddress(
                 msg.getStorageNodeHost(),
                 msg.getStorageNodePort());
+        ComponentAddress storageNode = new ComponentAddress(msg.getStorageNodeHost(), msg.getStorageNodePort());
 
         Map<String, SortedSet<Integer>> fileChunks = toFileChunksMap(msg.getFileChunksList());
         for (Map.Entry<String, SortedSet<Integer>> entry : fileChunks.entrySet()) {
             String filename = entry.getKey();
             SortedSet<Integer> sequenceNos = entry.getValue();
-            //fileTable.publishChunk();
+            for (Integer sequenceNo : sequenceNos) {
+                fileTable.publishChunk(filename, sequenceNo, storageNode);
+            }
         }
 
         logger.trace("Received heartbeat from " + storageNodeAddress + " with file chunks: " + fileChunks);
+        this.storageNodeAddressService.setStorageNodeAddress(storageNodeAddress);
         onlineStorageNodes.add(storageNodeAddress);
+        createMessageQueueIfNotExists(storageNodeAddress);
+    }
+
+    private void createMessageQueueIfNotExists(ComponentAddress storageNodeAddress) {
+        if (!messageQueues.containsKey(storageNodeAddress)) {
+            messageQueues.put(storageNodeAddress, new MessageFifoQueue());
+        }
     }
 
     private Map<String, SortedSet<Integer>> toFileChunksMap(List<Messages.FileChunks> pbFileChunks) {

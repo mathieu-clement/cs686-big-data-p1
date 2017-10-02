@@ -18,6 +18,8 @@ public class Controller {
 
     private final FileTable fileTable = new FileTable();
 
+    private final Map<ComponentAddress, MessageFifoQueue> messageQueues = new HashMap<>();
+
     public Controller(int port) {
         this.port = port;
     }
@@ -37,9 +39,14 @@ public class Controller {
 
     public void start() throws Exception {
         ServerSocket serverSocket = new ServerSocket(port);
+
+        new Thread(new ChunkReplicationRunnable(onlineStorageNodes, messageQueues, fileTable)).start();
+
         while (true) {
             Socket socket = serverSocket.accept();
-            new Thread(new MessageProcessor(onlineStorageNodes, fileTable, socket)).start();
+            StorageNodeAddressService storageNodeAddressService = new StorageNodeAddressService();
+            new Thread(new MessageProcessor(storageNodeAddressService, onlineStorageNodes, messageQueues, fileTable, socket)).start();
+            new Thread(new MessageSender(storageNodeAddressService, messageQueues, socket));
         }
     }
 

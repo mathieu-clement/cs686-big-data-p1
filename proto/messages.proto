@@ -20,6 +20,11 @@ message UploadFile {
     string fileName = 1;
 }
 
+message FileChunk {
+    string filename = 1;
+    int32 sequenceNo = 2;
+}
+
 message FileChunks {
     string filename = 1;
     repeated int32 sequenceNos = 2;
@@ -48,7 +53,7 @@ message GetStorageNodesResponse {
 // Controller orders one storage node to send a chunk to another storage node
 message OrderSendChunk {
     StorageNode storageNode = 1;
-    FileChunks fileChunks = 2;
+    FileChunk fileChunk = 2;
 }
 
 message MessageWrapper {

@@ -9,6 +9,7 @@ import java.util.*;
  * The FileTable is a list of all the files and chunks known to the controller.
  * It only contains files and chunks that are currently reachable, i.e. there is at least
  * one replica on one reachable storage node for that chunk.
+ *
  */
 public class FileTable {
 

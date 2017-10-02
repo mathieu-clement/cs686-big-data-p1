@@ -6,6 +6,8 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.Properties;
 
+import static java.lang.Integer.parseInt;
+
 public class DFSProperties {
     private static final DFSProperties INSTANCE = new DFSProperties();
     private static final Logger logger = LoggerFactory.getLogger(DFSProperties.class);
@@ -26,7 +28,11 @@ public class DFSProperties {
     }
 
     public int getHeartbeatPeriod() {
-        return Integer.parseInt(getProperty("heartbeat-period"));
+        return parseInt(getProperty("heartbeat-period"));
+    }
+
+    public int getReplicationCheckPeriod() {
+        return parseInt(getProperty("replication-check-period"));
     }
 
     public long getChunkSize() {
@@ -42,7 +48,7 @@ public class DFSProperties {
     }
 
     public int getMinReplicas() {
-        return Integer.parseInt(getProperty("min-replicas"));
+        return parseInt(getProperty("min-replicas"));
     }
 
     private String getProperty(String name) {

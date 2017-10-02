@@ -1,5 +1,6 @@
 package edu.usfca.cs.dfs.components.storageNode;
 
+import com.google.protobuf.ByteString;
 import edu.usfca.cs.dfs.DFSProperties;
 import edu.usfca.cs.dfs.Utils;
 import edu.usfca.cs.dfs.exceptions.ChecksumException;
@@ -10,12 +11,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.SortedSet;
 
@@ -24,6 +27,7 @@ class MessageProcessor implements Runnable {
     private final static Logger logger = LoggerFactory.getLogger(MessageProcessor.class);
     private final Socket socket;
     private final Map<String, SortedSet<Chunk>> chunks;
+    private final Map<ComponentAddress, Socket> storageNodeSockets = new HashMap<>();
 
     public MessageProcessor(Socket socket, Map<String, SortedSet<Chunk>> chunks) {
         this.socket = socket;
@@ -41,7 +45,7 @@ class MessageProcessor implements Runnable {
                 if (msg.hasStoreChunkMsg()) {
                     processStoreChunkMsg(socket, msg);
                 } else if (msg.hasOrderSendChunkMsg()) {
-                    processOrderSendChunkMsg(socket, msg);
+                    processOrderSendChunkMsg(msg);
                 }
             } catch (IOException e) {
                 logger.error("Error while parsing message or other IO error", e);
@@ -49,7 +53,7 @@ class MessageProcessor implements Runnable {
         }
     }
 
-    private void processOrderSendChunkMsg(Socket socket, Messages.MessageWrapper msgWrapper) {
+    private void processOrderSendChunkMsg(Messages.MessageWrapper msgWrapper) throws IOException {
         Messages.OrderSendChunk msg = msgWrapper.getOrderSendChunkMsg();
         String host = msg.getStorageNode().getHost();
         int port = msg.getStorageNode().getPort();
@@ -57,6 +61,44 @@ class MessageProcessor implements Runnable {
         String filename = msg.getFileChunk().getFilename();
         int sequenceNo = msg.getFileChunk().getSequenceNo();
         logger.debug("Controller wants me to send " + filename + "-chunk" + sequenceNo + " to " + componentAddress);
+        sendChunkToAnotherStorageNode(filename, sequenceNo, componentAddress);
+    }
+
+    private void sendChunkToAnotherStorageNode(String filename, int sequenceNo, ComponentAddress storageNode) throws IOException {
+        // Retrieve the chunk on local filesystem
+        String chunkFileName = filename + "-chunk" + sequenceNo;
+        Path chunkPath = Paths.get(DFSProperties.getInstance().getStorageNodeChunksDir(), chunkFileName);
+        File chunkFile = chunkPath.toFile();
+        if (!chunkFile.exists()) {
+            throw new IllegalStateException("I don't have " + chunkPath.toString() + ". Can't send it to another storage node.");
+        }
+
+        // Connect to that other storage socket
+        if (storageNodeSockets.get(storageNode) == null || storageNodeSockets.get(storageNode).isClosed()) {
+            storageNodeSockets.put(storageNode, storageNode.getSocket());
+        }
+
+        // send a store chunk message
+        FileInputStream fis = new FileInputStream(chunkFile);
+        String actualChecksum = Utils.md5sum(chunkFile);
+        String expectedChecksum = new String(Files.readAllBytes(Paths.get(DFSProperties.getInstance().getStorageNodeChunksDir(), chunkFileName + ".md5"))).split(" ")[0];
+        if (!actualChecksum.equals(expectedChecksum)) {
+            // TODO Tell controller we messed up
+            throw new ChecksumException(chunkFile, expectedChecksum, actualChecksum);
+        }
+
+        Messages.MessageWrapper msg = Messages.MessageWrapper.newBuilder()
+                .setStoreChunkMsg(
+                        Messages.StoreChunk.newBuilder()
+                                .setFileName(filename)
+                                .setSequenceNo(sequenceNo)
+                                .setData(ByteString.readFrom(fis))
+                                .setChecksum(actualChecksum)
+                                .build()
+                ).build();
+        fis.close();
+        logger.debug("Sending " + chunkFileName + " to " + storageNode);
+        msg.writeDelimitedTo(storageNodeSockets.get(storageNode).getOutputStream());
     }
 
     private void processStoreChunkMsg(Socket socket, Messages.MessageWrapper msgWrapper) throws IOException {

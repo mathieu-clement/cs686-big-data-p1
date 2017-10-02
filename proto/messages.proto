@@ -57,6 +57,15 @@ message OrderSendChunk {
     FileChunk fileChunk = 2;
 }
 
+message DownloadFileResponse {
+    string filename = 1;
+    message ChunkLocation {
+        int32 sequenceNo = 1;
+        StorageNode storageNode = 2;
+    }
+    repeated ChunkLocation chunkLocations = 2;
+}
+
 message MessageWrapper {
     oneof msg {
         StoreChunk storeChunkMsg = 1;
@@ -67,5 +76,6 @@ message MessageWrapper {
         GetStorageNodesRequest getStoragesNodesRequestMsg = 6;
         GetStorageNodesResponse getStorageNodesResponseMsg = 7;
         OrderSendChunk orderSendChunkMsg = 8;
+        DownloadFileResponse downloadFileResponseMsg = 9;
     }
 }

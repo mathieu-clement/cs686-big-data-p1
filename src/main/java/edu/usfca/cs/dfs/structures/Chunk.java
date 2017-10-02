@@ -98,7 +98,7 @@ public class Chunk implements Comparable<Chunk> {
         // (could avoid iterating twice, but creates messy code)
         File outputFile = new File(outputFilePathname);
         if (outputFile.exists() && outputFile.length() != 0) {
-            if (DFSProperties.getInstance().overwriteOutputFile()) {
+            if (DFSProperties.getInstance().isOverwriteOutputFile()) {
                 if (!outputFile.delete()) {
                     throw new RuntimeException("Could not delete existing file");
                 }

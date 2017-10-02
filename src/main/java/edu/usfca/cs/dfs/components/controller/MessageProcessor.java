@@ -120,7 +120,7 @@ class MessageProcessor implements Runnable {
             }
         }
 
-        logger.trace("Received heartbeat from " + storageNodeAddress + " with file chunks: " + fileChunks);
+        logger.debug("Received heartbeat from " + storageNodeAddress + " with file chunks: " + fileChunks);
         this.storageNodeAddressService.setStorageNodeAddress(storageNodeAddress);
         onlineStorageNodes.add(storageNodeAddress);
         createMessageQueueIfNotExists(storageNodeAddress);

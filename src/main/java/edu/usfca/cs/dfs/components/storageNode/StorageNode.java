@@ -80,7 +80,7 @@ public class StorageNode {
             // Check sum
             Path checksumFilePath = Paths.get(path.toString() + ".md5");
             String expectedChecksum = new String(Files.readAllBytes(checksumFilePath)).split(" ")[0];
-            Utils.checkSum(checksumFilePath.toFile(), expectedChecksum);
+            Utils.checkSum(chunkFile, expectedChecksum);
 
             addToChunks(chunk, result);
         }

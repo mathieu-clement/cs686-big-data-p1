@@ -51,8 +51,12 @@ public class DFSProperties {
         return parseInt(getProperty("min-replicas"));
     }
 
-    public boolean overwriteOutputFile() {
+    public boolean isOverwriteOutputFile() {
         return "true".equals(getProperty("overwrite-output-file"));
+    }
+
+    public int getClientParallelDownloads() {
+        return parseInt(getProperty("client-parallel-downloads"));
     }
 
     private String getProperty(String name) {

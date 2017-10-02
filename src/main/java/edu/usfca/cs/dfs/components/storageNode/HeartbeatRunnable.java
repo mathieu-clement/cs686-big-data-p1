@@ -45,7 +45,7 @@ class HeartbeatRunnable implements Runnable {
                             Messages.MessageWrapper.newBuilder()
                                     .setHeartbeatMsg(heartbeatMsg)
                                     .build();
-                    logger.trace("Sending heartbeat to controller " + controllerAddr);
+                    logger.debug("Sending heartbeat to controller " + controllerAddr);
                     msgWrapper.writeDelimitedTo(socket.getOutputStream());
 
                     Thread.sleep(heartbeatPeriod);

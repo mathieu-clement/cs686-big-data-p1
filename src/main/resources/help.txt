@@ -33,3 +33,6 @@ DESCRIPTION
         calculate a checksum for each "chunk" and send those chunks
         in parallel to a list of storage nodes provided by the controller
         to store the file.
+
+     delete-file filename
+        Removes file from DFS.

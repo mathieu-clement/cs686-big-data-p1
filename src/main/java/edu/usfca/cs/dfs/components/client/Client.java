@@ -1,6 +1,7 @@
 package edu.usfca.cs.dfs.components.client;
 
 import com.google.protobuf.ByteString;
+import com.google.protobuf.TextFormat;
 import edu.usfca.cs.dfs.DFSProperties;
 import edu.usfca.cs.dfs.Utils;
 import edu.usfca.cs.dfs.messages.Messages;
@@ -15,7 +16,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.Semaphore;
+import java.util.concurrent.*;
 
 public class Client {
 
@@ -46,6 +47,10 @@ public class Client {
                 downloadFile(controllerAddr, args[3]);
                 break;
 
+            case "delete-file":
+                throw new UnsupportedOperationException("Not implemented yet.");
+                // break
+
             default:
                 printHelp();
                 System.exit(1);
@@ -54,7 +59,7 @@ public class Client {
 
     private static Map<ComponentAddress, Socket> storageNodeSockets = new HashMap<>();
 
-    private static void downloadFile(ComponentAddress controllerAddr, String filename) throws IOException {
+    private static void downloadFile(ComponentAddress controllerAddr, String filename) throws IOException, ExecutionException, InterruptedException {
         Messages.MessageWrapper msg = Messages.MessageWrapper.newBuilder()
                 .setDownloadFileMsg(
                         Messages.DownloadFile.newBuilder()
@@ -72,19 +77,9 @@ public class Client {
         }
         Messages.DownloadFileResponse downloadFileResponseMsg = msgWrapper.getDownloadFileResponseMsg();
 
-        SortedSet<Chunk> chunks = new TreeSet<>();
+        SortedSet<Chunk> chunks = downloadChunks(filename, downloadFileResponseMsg);
 
-        Map<Integer, List<ComponentAddress>> chunkLocations = parseChunkLocations(downloadFileResponseMsg);
-        for (Map.Entry<Integer, List<ComponentAddress>> entry : chunkLocations.entrySet()) {
-            int sequenceNo = entry.getKey();
-            List<ComponentAddress> nodes = entry.getValue();
-            ComponentAddress randomNode = Utils.chooseNrandomOrMin(1, new HashSet<>(nodes)).iterator().next();
-            // Download chunk from that random node
-            Chunk chunk = downloadChunk(filename, sequenceNo, randomNode);
-            chunks.add(chunk);
-        }
-
-        logger.info("Assembling chunks to file " + filename);
+        logger.info("Assembling chunks into file " + filename);
         File file = Chunk.createFileFromChunks(chunks, filename);
         long bytes = Files.size(file.toPath());
         double megabytes = bytes / 1e6;
@@ -102,7 +97,52 @@ public class Client {
         }
     }
 
-    private static Chunk downloadChunk(String filename, int sequenceNo, ComponentAddress storageNode) throws IOException {
+    private static SortedSet<Chunk> downloadChunks(String filename, Messages.DownloadFileResponse downloadFileResponseMsg) throws IOException, ExecutionException, InterruptedException {
+
+        int nThreads = DFSProperties.getInstance().getClientParallelDownloads();
+        ExecutorService executor = Executors.newFixedThreadPool(nThreads);
+
+        // Each Thread gets its own socket
+        // Key is thread ID + storage node
+        Map<ThreadStorageNodeKey, Socket> sockets = new HashMap<>();
+
+        List<Future<Chunk>> futures = new ArrayList<>();
+        Map<Integer, List<ComponentAddress>> chunkLocations = parseChunkLocations(downloadFileResponseMsg);
+        for (Map.Entry<Integer, List<ComponentAddress>> entry : chunkLocations.entrySet()) {
+            int sequenceNo = entry.getKey();
+            List<ComponentAddress> nodes = entry.getValue();
+            ComponentAddress randomNode = Utils.chooseNrandomOrMin(1, new HashSet<>(nodes)).iterator().next();
+
+            // Download chunk from that random node
+            DownloadChunkTask task = new DownloadChunkTask(filename, sequenceNo, randomNode, sockets);
+            futures.add(executor.submit(task));
+        }
+
+        SortedSet<Chunk> chunks = new TreeSet<>();
+        for (int sequenceNo : chunkLocations.keySet()) {
+            chunks.add(futures.get(sequenceNo).get());
+        }
+
+        for (Socket s : sockets.values()) {
+            s.close();
+        }
+
+        try {
+            logger.trace("Attempting to shutdown executor");
+            executor.shutdown();
+            executor.awaitTermination(5, TimeUnit.SECONDS);
+        } finally {
+            if (!executor.isTerminated()) {
+                logger.error("Some tasks didn't finish.");
+            }
+            executor.shutdownNow();
+            logger.trace("ExecutorService shutdown finished.");
+        }
+
+        return chunks;
+    }
+
+    private static Chunk downloadChunk(String filename, int sequenceNo, Socket socket) throws IOException {
         Messages.MessageWrapper requestMsg = Messages.MessageWrapper.newBuilder()
                 .setDownloadChunkMsg(
                         Messages.DownloadChunk.newBuilder()
@@ -111,15 +151,73 @@ public class Client {
                                 .build()
                 )
                 .build();
-        Socket socket = getSocket(storageNode);
         requestMsg.writeDelimitedTo(socket.getOutputStream());
 
         Messages.MessageWrapper msgWrapper = Messages.MessageWrapper.parseDelimitedFrom(socket.getInputStream());
         if (!msgWrapper.hasStoreChunkMsg()) {
-            throw new IllegalStateException("Response to DownloadChunk should have been StoreChunk");
+            throw new IllegalStateException("Response to DownloadChunk should have been StoreChunk. Got: " + TextFormat.printToString(msgWrapper));
         }
 
         return processStoreChunkMsg(socket, msgWrapper);
+    }
+
+    private static class ThreadStorageNodeKey {
+        private final long threadId;
+        private final ComponentAddress storageNode;
+
+        public ThreadStorageNodeKey(long threadId, ComponentAddress storageNode) {
+            this.threadId = threadId;
+            this.storageNode = storageNode;
+        }
+
+        public long getThreadId() {
+            return threadId;
+        }
+
+        public ComponentAddress getStorageNode() {
+            return storageNode;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            ThreadStorageNodeKey that = (ThreadStorageNodeKey) o;
+            return threadId == that.threadId &&
+                    Objects.equals(storageNode, that.storageNode);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(threadId, storageNode);
+        }
+    }
+
+    private static class DownloadChunkTask implements Callable<Chunk> {
+
+        private final String filename;
+        private final int sequenceNo;
+        private final ComponentAddress storageNode;
+        private final Socket socket;
+
+        public DownloadChunkTask(String filename, int sequenceNo, ComponentAddress storageNode, Map<ThreadStorageNodeKey, Socket> sockets) throws IOException {
+            this.filename = filename;
+            this.sequenceNo = sequenceNo;
+            this.storageNode = storageNode;
+
+            long threadId = Thread.currentThread().getId();
+            ThreadStorageNodeKey key = new ThreadStorageNodeKey(threadId, storageNode);
+            if (sockets.get(key) == null) {
+                sockets.put(key, storageNode.getSocket());
+            }
+
+            this.socket = sockets.get(key);
+        }
+
+        @Override
+        public Chunk call() throws Exception {
+            return downloadChunk(filename, sequenceNo, socket);
+        }
     }
 
     private static Chunk processStoreChunkMsg(Socket socket, Messages.MessageWrapper msgWrapper) throws IOException {
@@ -155,7 +253,6 @@ public class Client {
         Utils.checkSum(chunkFile, storeChunkMsg.getChecksum());
 
         return new Chunk(storeChunkMsg.getFileName(), storeChunkMsg.getSequenceNo(), Files.size(chunkFilePath), storeChunkMsg.getChecksum(), chunkFilePath);
-
     }
 
     private static Socket getSocket(ComponentAddress storageNode) throws IOException {

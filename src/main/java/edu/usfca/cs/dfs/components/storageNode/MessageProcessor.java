@@ -42,6 +42,8 @@ class MessageProcessor implements Runnable {
                 Messages.MessageWrapper msg = Messages.MessageWrapper.parseDelimitedFrom(
                         socket.getInputStream());
 
+                if (msg == null) continue;
+
                 // Dispatch
                 if (msg.hasStoreChunkMsg()) {
                     processStoreChunkMsg(socket, msg);

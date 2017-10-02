@@ -54,13 +54,17 @@ public class ChunkReplicationRunnable implements Runnable {
         for (ChunkRef chunk : underReplicatedChunks) {
             Set<ComponentAddress> unusedStorageNodes = new HashSet<>(storageNodes);
             unusedStorageNodes.removeAll(chunk.getReplicaLocations());
+
             if (unusedStorageNodes.isEmpty()) {
-                logger.warn("There are not enough nodes online to satisfy the replication strategy.");
+                logger.warn("There are not enough nodes online, not even one that could help satisfy the replication strategy.");
                 return;
             }
-
             int missingReplicas = minReplicas - chunk.getReplicaCount();
             Set<ComponentAddress> additionalNodes = Utils.chooseNrandomOrMin(missingReplicas, unusedStorageNodes);
+            if (additionalNodes.size() != missingReplicas) {
+                logger.warn("We need " + missingReplicas + " more replicas, but as of now we can only get " + additionalNodes.size() + " more.");
+
+            }
 
             for (ComponentAddress additionalNode : additionalNodes) {
                 Messages.OrderSendChunk internalMsg = Messages.OrderSendChunk.newBuilder()

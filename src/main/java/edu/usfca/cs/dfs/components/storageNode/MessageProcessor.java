@@ -5,6 +5,7 @@ import edu.usfca.cs.dfs.Utils;
 import edu.usfca.cs.dfs.exceptions.ChecksumException;
 import edu.usfca.cs.dfs.messages.Messages;
 import edu.usfca.cs.dfs.structures.Chunk;
+import edu.usfca.cs.dfs.structures.ComponentAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,10 +39,22 @@ class MessageProcessor implements Runnable {
             // Dispatch
             if (msg.hasStoreChunkMsg()) {
                 processStoreChunkMsg(socket, msg);
+            } else if (msg.hasOrderSendChunkMsg()) {
+                processOrderSendChunkMsg(socket, msg);
             }
         } catch (IOException e) {
             logger.error("Error while parsing message or other IO error", e);
         }
+    }
+
+    private void processOrderSendChunkMsg(Socket socket, Messages.MessageWrapper msgWrapper) {
+        Messages.OrderSendChunk msg = msgWrapper.getOrderSendChunkMsg();
+        String host = msg.getStorageNode().getHost();
+        int port = msg.getStorageNode().getPort();
+        ComponentAddress componentAddress = new ComponentAddress(host, port);
+        String filename = msg.getFileChunk().getFilename();
+        int sequenceNo = msg.getFileChunk().getSequenceNo();
+        logger.debug("Controller wants me to send " + filename + "-chunk" + sequenceNo + " to " + componentAddress);
     }
 
     private void processStoreChunkMsg(Socket socket, Messages.MessageWrapper msgWrapper) throws IOException {

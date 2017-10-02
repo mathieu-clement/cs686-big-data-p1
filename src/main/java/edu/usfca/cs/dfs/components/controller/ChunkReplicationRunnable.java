@@ -60,34 +60,30 @@ public class ChunkReplicationRunnable implements Runnable {
             }
 
             int missingReplicas = minReplicas - chunk.getReplicaCount();
-            try {
-                Set<ComponentAddress> additionalNodes = Utils.chooseNrandomOrMin(missingReplicas, unusedStorageNodes);
+            Set<ComponentAddress> additionalNodes = Utils.chooseNrandomOrMin(missingReplicas, unusedStorageNodes);
 
-                for (ComponentAddress additionalNode : additionalNodes) {
-                    Messages.OrderSendChunk internalMsg = Messages.OrderSendChunk.newBuilder()
-                            .setStorageNode(
-                                    Messages.StorageNode.newBuilder()
-                                            .setHost(additionalNode.getHost())
-                                            .setPort(additionalNode.getPort())
-                                            .build()
-                            )
-                            .setFileChunk(
-                                    Messages.FileChunk.newBuilder()
-                                            .setFilename(chunk.getFilename())
-                                            .setSequenceNo(chunk.getSequenceNo())
-                                            .build()
-                            )
-                            .build();
-                    Messages.MessageWrapper msg = Messages.MessageWrapper.newBuilder()
-                            .setOrderSendChunkMsg(internalMsg)
-                            .build();
+            for (ComponentAddress additionalNode : additionalNodes) {
+                Messages.OrderSendChunk internalMsg = Messages.OrderSendChunk.newBuilder()
+                        .setStorageNode(
+                                Messages.StorageNode.newBuilder()
+                                        .setHost(additionalNode.getHost())
+                                        .setPort(additionalNode.getPort())
+                                        .build()
+                        )
+                        .setFileChunk(
+                                Messages.FileChunk.newBuilder()
+                                        .setFilename(chunk.getFilename())
+                                        .setSequenceNo(chunk.getSequenceNo())
+                                        .build()
+                        )
+                        .build();
+                Messages.MessageWrapper msg = Messages.MessageWrapper.newBuilder()
+                        .setOrderSendChunkMsg(internalMsg)
+                        .build();
 
-                    ComponentAddress senderNode = Utils.chooseNrandomOrMin(1, chunk.getReplicaLocations()).iterator().next();
-                    logger.debug("Telling " + senderNode + " to transfer " + chunk + " to " + additionalNode);
-                    messageQueues.get(senderNode).queue(msg);
-                }
-            } catch (IndexOutOfBoundsException oobe) {
-                int a = 1;
+                ComponentAddress senderNode = Utils.chooseNrandomOrMin(1, chunk.getReplicaLocations()).iterator().next();
+                logger.debug("Telling " + senderNode + " to transfer " + chunk + " to " + additionalNode);
+                messageQueues.get(senderNode).queue(msg);
             }
         }
 

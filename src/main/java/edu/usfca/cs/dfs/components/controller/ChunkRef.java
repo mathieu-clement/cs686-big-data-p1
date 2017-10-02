@@ -57,4 +57,9 @@ public class ChunkRef implements Comparable<ChunkRef> {
     public int getSequenceNo() {
         return sequenceNo;
     }
+
+    @Override
+    public String toString() {
+        return "ChunkRef[" + filename + "-chunk" + sequenceNo + "]";
+    }
 }

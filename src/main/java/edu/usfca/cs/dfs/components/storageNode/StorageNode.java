@@ -1,7 +1,7 @@
 package edu.usfca.cs.dfs.components.storageNode;
 
 import edu.usfca.cs.dfs.DFSProperties;
-import edu.usfca.cs.dfs.exceptions.ChecksumException;
+import edu.usfca.cs.dfs.Utils;
 import edu.usfca.cs.dfs.structures.Chunk;
 import edu.usfca.cs.dfs.structures.ComponentAddress;
 import org.slf4j.Logger;
@@ -80,9 +80,7 @@ public class StorageNode {
             // Check sum
             Path checksumFilePath = Paths.get(path.toString() + ".md5");
             String expectedChecksum = new String(Files.readAllBytes(checksumFilePath)).split(" ")[0];
-            if (!actualChecksum.equals(expectedChecksum)) {
-                throw new ChecksumException(chunkFile, expectedChecksum, actualChecksum);
-            }
+            Utils.checkSum(checksumFilePath.toFile(), expectedChecksum);
 
             addToChunks(chunk, result);
         }

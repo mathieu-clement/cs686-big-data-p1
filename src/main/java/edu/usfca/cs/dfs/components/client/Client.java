@@ -2,6 +2,7 @@ package edu.usfca.cs.dfs.components.client;
 
 import com.google.protobuf.ByteString;
 import edu.usfca.cs.dfs.DFSProperties;
+import edu.usfca.cs.dfs.Utils;
 import edu.usfca.cs.dfs.messages.Messages;
 import edu.usfca.cs.dfs.structures.Chunk;
 import edu.usfca.cs.dfs.structures.ComponentAddress;
@@ -10,9 +11,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.*;
 import java.util.concurrent.Semaphore;
 
 public class Client {
@@ -50,6 +52,8 @@ public class Client {
         }
     }
 
+    private static Map<ComponentAddress, Socket> storageNodeSockets = new HashMap<>();
+
     private static void downloadFile(ComponentAddress controllerAddr, String filename) throws IOException {
         Messages.MessageWrapper msg = Messages.MessageWrapper.newBuilder()
                 .setDownloadFileMsg(
@@ -68,14 +72,106 @@ public class Client {
         }
         Messages.DownloadFileResponse downloadFileResponseMsg = msgWrapper.getDownloadFileResponseMsg();
 
+        SortedSet<Chunk> chunks = new TreeSet<>();
+
+        Map<Integer, List<ComponentAddress>> chunkLocations = parseChunkLocations(downloadFileResponseMsg);
+        for (Map.Entry<Integer, List<ComponentAddress>> entry : chunkLocations.entrySet()) {
+            int sequenceNo = entry.getKey();
+            List<ComponentAddress> nodes = entry.getValue();
+            ComponentAddress randomNode = Utils.chooseNrandomOrMin(1, new HashSet<>(nodes)).iterator().next();
+            // Download chunk from that random node
+            Chunk chunk = downloadChunk(filename, sequenceNo, randomNode);
+            chunks.add(chunk);
+        }
+
+        logger.info("Assembling chunks to file " + filename);
+        Chunk.createFileFromChunks(chunks, filename);
+
+        // Cleanup
+        logger.debug("Deleting all chunks from local filesystem");
+        for (Chunk chunk : chunks) {
+            chunk.getChunkLocalPath().toFile().delete();
+        }
+
+        for (Socket socket : storageNodeSockets.values()) {
+            socket.close();
+        }
+    }
+
+    private static Chunk downloadChunk(String filename, int sequenceNo, ComponentAddress storageNode) throws IOException {
+        Messages.MessageWrapper requestMsg = Messages.MessageWrapper.newBuilder()
+                .setDownloadChunkMsg(
+                        Messages.DownloadChunk.newBuilder()
+                                .setFilename(filename)
+                                .setSequenceNo(sequenceNo)
+                                .build()
+                )
+                .build();
+        Socket socket = getSocket(storageNode);
+        requestMsg.writeDelimitedTo(socket.getOutputStream());
+
+        Messages.MessageWrapper msgWrapper = Messages.MessageWrapper.parseDelimitedFrom(socket.getInputStream());
+        if (!msgWrapper.hasStoreChunkMsg()) {
+            throw new IllegalStateException("Response to DownloadChunk should have been StoreChunk");
+        }
+
+        return processStoreChunkMsg(socket, msgWrapper);
+    }
+
+    private static Chunk processStoreChunkMsg(Socket socket, Messages.MessageWrapper msgWrapper) throws IOException {
+        Messages.StoreChunk storeChunkMsg
+                = msgWrapper.getStoreChunkMsg();
+        logger.debug("Storing file name: "
+                + storeChunkMsg.getFileName() + " Chunk #" + storeChunkMsg.getSequenceNo() + " received from " +
+                socket.getRemoteSocketAddress().toString());
+
+        String storageDirectory = DFSProperties.getInstance().getClientChunksDir();
+        File storageDirectoryFile = new File(storageDirectory);
+        if (!storageDirectoryFile.exists()) {
+            if (!storageDirectoryFile.mkdir()) {
+                System.err.println("Could not create storage directory.");
+                System.exit(1);
+            }
+        }
+
+        // Store chunk file
+        String chunkFilename = storeChunkMsg.getFileName() + "-chunk" + storeChunkMsg.getSequenceNo();
+        Path chunkFilePath = Paths.get(storageDirectory, chunkFilename);
+        File chunkFile = chunkFilePath.toFile();
+        if (chunkFile.exists()) {
+            if (!chunkFile.delete()) {
+                throw new RuntimeException("Unable to delete existing file before overwriting");
+            }
+        }
+        logger.debug("Storing to file " + chunkFilePath);
+        FileOutputStream fos = new FileOutputStream(chunkFile);
+        storeChunkMsg.getData().writeTo(fos);
+        fos.close();
+
+        Utils.checkSum(chunkFile, storeChunkMsg.getChecksum());
+
+        return new Chunk(storeChunkMsg.getFileName(), storeChunkMsg.getSequenceNo(), Files.size(chunkFilePath), storeChunkMsg.getChecksum(), chunkFilePath);
+
+    }
+
+    private static Socket getSocket(ComponentAddress storageNode) throws IOException {
+        if (storageNodeSockets.get(storageNode) == null || storageNodeSockets.get(storageNode).isClosed()) {
+            storageNodeSockets.put(storageNode, storageNode.getSocket());
+        }
+        return storageNodeSockets.get(storageNode);
+    }
+
+    private static Map<Integer, List<ComponentAddress>> parseChunkLocations(Messages.DownloadFileResponse downloadFileResponseMsg) {
+        Map<Integer, List<ComponentAddress>> result = new HashMap<>();
         for (Messages.DownloadFileResponse.ChunkLocation chunkLocation : downloadFileResponseMsg.getChunkLocationsList()) {
             List<ComponentAddress> nodes = new ArrayList<>();
             for (Messages.StorageNode node : chunkLocation.getStorageNodesList()) {
                 nodes.add(new ComponentAddress(node.getHost(), node.getPort()));
             }
             logger.debug("Chunk " + chunkLocation.getSequenceNo() + " is on " + nodes);
+            result.put(chunkLocation.getSequenceNo(), nodes);
         }
-
+        return result;
     }
 
     private static void sendFile(ComponentAddress controllerAddr, String filename) throws IOException, InterruptedException {

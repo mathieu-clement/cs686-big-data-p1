@@ -35,7 +35,7 @@ class MessageProcessor implements Runnable {
                 if (msgWrapper.hasHeartbeatMsg()) {
                     processHeartbeatMsg(msgWrapper);
                 } else if (msgWrapper.hasGetStoragesNodesRequestMsg()) {
-                    processGetStorageNodesRequestMsg();
+                    processGetStorageNodesRequestMsg(socket);
                 } else if (msgWrapper.hasDownloadFileMsg()) {
                     processDownloadFileMsg(socket, msgWrapper);
                 }
@@ -82,7 +82,7 @@ class MessageProcessor implements Runnable {
         }
     }
 
-    private void processGetStorageNodesRequestMsg() throws IOException {
+    private void processGetStorageNodesRequestMsg(Socket socket) throws IOException {
         List<Messages.StorageNode> msgStorageNodeList = new ArrayList<>(onlineStorageNodes.size());
         for (ComponentAddress onlineStorageNode : onlineStorageNodes) {
             msgStorageNodeList.add(Messages.StorageNode.newBuilder()
@@ -97,7 +97,7 @@ class MessageProcessor implements Runnable {
         Messages.MessageWrapper responseMsgWrapper = Messages.MessageWrapper.newBuilder()
                 .setGetStorageNodesResponseMsg(storageNodesResponse)
                 .build();
-        send(responseMsgWrapper);
+        responseMsgWrapper.writeDelimitedTo(socket.getOutputStream());
     }
 
     private void send(Messages.MessageWrapper msg) {

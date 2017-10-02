@@ -1,5 +1,7 @@
 package edu.usfca.cs.dfs;
 
+import edu.usfca.cs.dfs.exceptions.ChecksumException;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
@@ -59,5 +61,12 @@ public class Utils {
         FileWriter inputFileWriter = new FileWriter(filename);
         inputFileWriter.write(str);
         inputFileWriter.close();
+    }
+
+    public static void checkSum(File file, String expectedChecksum) throws IOException {
+        String actualChecksum = Utils.md5sum(file);
+        if (!actualChecksum.equals(expectedChecksum)) {
+            throw new ChecksumException(file, expectedChecksum, actualChecksum);
+        }
     }
 }

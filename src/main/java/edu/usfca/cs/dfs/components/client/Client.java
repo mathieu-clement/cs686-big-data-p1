@@ -8,9 +8,7 @@ import edu.usfca.cs.dfs.structures.ComponentAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
+import java.io.*;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,6 +27,7 @@ public class Client {
 
         if (args.length != 3) {
             System.err.println("Usage: Client controller-host controller-port fileToSend");
+            printHelp();
             System.exit(1);
         }
 
@@ -38,6 +37,21 @@ public class Client {
         new Thread(storageNodeListRunnable).start();
 
         sendChunkedSampleFile(filename, storageNodeListRunnable);
+    }
+
+    private static void printHelp() throws IOException {
+        StringBuilder sb = new StringBuilder();
+        InputStream is = Client.class.getClassLoader().getResourceAsStream("help.txt");
+        char[] buf = new char[1024];
+        int c;
+
+        BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+        while ((c = reader.read(buf)) != -1) {
+            sb.append(new String(buf, 0, c));
+        }
+        reader.close();
+
+        System.err.println(sb.toString());
     }
 
     private static void sendChunkedSampleFile(String filename, GetStorageNodeListRunnable storageNodeListRunnable) throws IOException, InterruptedException {

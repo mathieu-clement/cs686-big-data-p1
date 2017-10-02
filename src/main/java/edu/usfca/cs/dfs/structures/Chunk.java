@@ -1,5 +1,7 @@
 package edu.usfca.cs.dfs.structures;
 
+import edu.usfca.cs.dfs.DFSProperties;
+
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -96,7 +98,13 @@ public class Chunk implements Comparable<Chunk> {
         // (could avoid iterating twice, but creates messy code)
         File outputFile = new File(outputFilePathname);
         if (outputFile.exists() && outputFile.length() != 0) {
-            throw new IllegalArgumentException("Output file already exists.");
+            if (DFSProperties.getInstance().overwriteOutputFile()) {
+                if (!outputFile.delete()) {
+                    throw new RuntimeException("Could not delete existing file");
+                }
+            } else {
+                throw new IllegalStateException("File already exists.");
+            }
         }
         BufferedWriter writer = new BufferedWriter(new FileWriter(outputFile));
         for (Chunk chunk : chunks) {

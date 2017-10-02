@@ -85,7 +85,8 @@ public class Client {
         }
 
         logger.info("Assembling chunks to file " + filename);
-        Chunk.createFileFromChunks(chunks, filename);
+        File file = Chunk.createFileFromChunks(chunks, filename);
+        logger.info("File assembled. Size: " + Files.size(file.toPath()));
 
         // Cleanup
         logger.debug("Deleting all chunks from local filesystem");

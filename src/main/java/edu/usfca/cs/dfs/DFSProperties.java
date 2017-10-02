@@ -51,6 +51,10 @@ public class DFSProperties {
         return parseInt(getProperty("min-replicas"));
     }
 
+    public boolean overwriteOutputFile() {
+        return "true".equals(getProperty("overwrite-output-file"));
+    }
+
     private String getProperty(String name) {
         return System.getProperty(name, properties.getProperty(name));
     }

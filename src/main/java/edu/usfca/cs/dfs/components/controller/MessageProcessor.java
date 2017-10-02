@@ -14,13 +14,15 @@ class MessageProcessor implements Runnable {
     private static final Random random = new Random();
     private final Map<ComponentAddress, MessageFifoQueue> messageQueues;
     private final Set<ComponentAddress> onlineStorageNodes;
+    private final Map<ComponentAddress, Date> heartbeats;
     private StorageNodeAddressService storageNodeAddressService;
     private final FileTable fileTable;
     private final Socket socket;
 
-    public MessageProcessor(StorageNodeAddressService storageNodeAddressService, Set<ComponentAddress> onlineStorageNodes, Map<ComponentAddress, MessageFifoQueue> messageQueues, FileTable fileTable, Socket socket) {
+    public MessageProcessor(StorageNodeAddressService storageNodeAddressService, Set<ComponentAddress> onlineStorageNodes, Map<ComponentAddress, Date> heartbeats, Map<ComponentAddress, MessageFifoQueue> messageQueues, FileTable fileTable, Socket socket) {
         this.storageNodeAddressService = storageNodeAddressService;
         this.onlineStorageNodes = onlineStorageNodes;
+        this.heartbeats = heartbeats;
         this.messageQueues = messageQueues;
         this.fileTable = fileTable;
         this.socket = socket;
@@ -36,7 +38,7 @@ class MessageProcessor implements Runnable {
                 if (msgWrapper == null) {
                     logger.warn("Incoming null message");
                     nullMessageCount++;
-                    if (nullMessageCount == 10) {
+                    if (nullMessageCount == 50) {
                         logger.error("Too many null messages in a row. Closing socket.");
                         socket.close();
                         return;
@@ -133,6 +135,9 @@ class MessageProcessor implements Runnable {
                 msg.getStorageNodeHost(),
                 msg.getStorageNodePort());
         ComponentAddress storageNode = new ComponentAddress(msg.getStorageNodeHost(), msg.getStorageNodePort());
+
+        // Remember that we have seen this heartbeat, to detect missing hearbeats later.
+        heartbeats.put(storageNode, new Date());
 
         Map<String, SortedSet<Integer>> fileChunks = toFileChunksMap(msg.getFileChunksList());
         for (Map.Entry<String, SortedSet<Integer>> entry : fileChunks.entrySet()) {

@@ -24,8 +24,8 @@ public class ChunkReplicationRunnable implements Runnable {
     private final Map<ComponentAddress, MessageFifoQueue> messageQueues;
     private final FileTable fileTable;
 
-    public ChunkReplicationRunnable(Set<ComponentAddress> storageNodes, Map<ComponentAddress, MessageFifoQueue> messageQueues, FileTable fileTable) {
-        this.storageNodes = storageNodes;
+    public ChunkReplicationRunnable(Set<ComponentAddress> onlineStorageNodes, Map<ComponentAddress, MessageFifoQueue> messageQueues, FileTable fileTable) {
+        this.storageNodes = onlineStorageNodes;
         this.messageQueues = messageQueues;
         this.fileTable = fileTable;
     }
@@ -86,7 +86,7 @@ public class ChunkReplicationRunnable implements Runnable {
                         .build();
 
                 ComponentAddress senderNode = Utils.chooseNrandomOrMin(1, chunk.getReplicaLocations()).iterator().next();
-                logger.trace("Telling " + senderNode + " to transfer " + chunk + " to " + additionalNode);
+                logger.debug("Telling " + senderNode + " to transfer " + chunk + " to " + additionalNode);
                 messageQueues.get(senderNode).queue(msg);
             }
         }

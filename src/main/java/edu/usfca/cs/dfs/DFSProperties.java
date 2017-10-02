@@ -59,6 +59,14 @@ public class DFSProperties {
         return parseInt(getProperty("client-parallel-downloads"));
     }
 
+    public int getHeartbeatCheckPeriod() {
+        return parseInt(getProperty("heartbeat-check-period"));
+    }
+
+    public int getMaxHeartbeatAge() {
+        return parseInt(getProperty("max-heartbeat-age"));
+    }
+
     private String getProperty(String name) {
         return System.getProperty(name, properties.getProperty(name));
     }

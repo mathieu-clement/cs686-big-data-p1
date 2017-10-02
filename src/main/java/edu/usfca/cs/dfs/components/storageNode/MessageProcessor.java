@@ -72,7 +72,7 @@ class MessageProcessor implements Runnable {
             } catch (IOException e) {
                 logger.error("Error while parsing message or other IO error", e);
                 countExceptions++;
-                if (countExceptions == 10) {
+                if (countExceptions == 50) {
                     logger.error("Something is very wrong here. Too many problems when reading messages. Exiting.");
                     System.exit(1);
                 }

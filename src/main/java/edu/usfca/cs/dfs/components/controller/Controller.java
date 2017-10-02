@@ -6,10 +6,7 @@ import org.slf4j.LoggerFactory;
 
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class Controller {
 
@@ -22,6 +19,8 @@ public class Controller {
     private final FileTable fileTable = new FileTable();
 
     private final Map<ComponentAddress, MessageFifoQueue> messageQueues = new HashMap<>();
+
+    private final Map<ComponentAddress, Date> heartbeats = new HashMap<>();
 
     public Controller(int port) {
         this.port = port;
@@ -44,12 +43,13 @@ public class Controller {
         ServerSocket serverSocket = new ServerSocket(port);
 
         new Thread(new ChunkReplicationRunnable(onlineStorageNodes, messageQueues, fileTable)).start();
+        new Thread(new HeartbeatMonitor(onlineStorageNodes, heartbeats, fileTable)).start();
 
         while (true) {
             Socket socket = serverSocket.accept();
             logger.trace("New connection from " + socket.getRemoteSocketAddress());
             StorageNodeAddressService storageNodeAddressService = new StorageNodeAddressService();
-            new Thread(new MessageProcessor(storageNodeAddressService, onlineStorageNodes, messageQueues, fileTable, socket)).start();
+            new Thread(new MessageProcessor(storageNodeAddressService, onlineStorageNodes, heartbeats, messageQueues, fileTable, socket)).start();
 
             // Though it will work fine without it, sleeping for a while will avoid the message sender
             // to run into a race condition where the message queue doesn't exist yet because we have not

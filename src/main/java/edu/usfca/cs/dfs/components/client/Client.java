@@ -25,17 +25,62 @@ public class Client {
 
     public static void main(String[] args) throws Exception {
 
-        if (args.length != 3) {
+        if (args.length < 3) {
             System.err.println("Usage: Client controller-host controller-port fileToSend");
             printHelp();
             System.exit(1);
         }
 
         ComponentAddress controllerAddr = new ComponentAddress(args[0], Integer.parseInt(args[1]));
-        String filename = args[2];
+
+        String command = args[2];
+
+        switch (command) {
+            case "upload-file":
+                sendFile(controllerAddr, args[3]);
+                break;
+
+            case "download-file":
+                downloadFile(controllerAddr, args[3]);
+                break;
+
+            default:
+                printHelp();
+                System.exit(1);
+        }
+    }
+
+    private static void downloadFile(ComponentAddress controllerAddr, String filename) throws IOException {
+        Messages.MessageWrapper msg = Messages.MessageWrapper.newBuilder()
+                .setDownloadFileMsg(
+                        Messages.DownloadFile.newBuilder()
+                                .setFileName(filename)
+                                .build()
+                )
+                .build();
+        Socket controllerSocket = controllerAddr.getSocket();
+        logger.info("Asking controller " + controllerAddr + " about file " + filename);
+        msg.writeDelimitedTo(controllerSocket.getOutputStream());
+
+        Messages.MessageWrapper msgWrapper = Messages.MessageWrapper.parseDelimitedFrom(controllerSocket.getInputStream());
+        if (!msgWrapper.hasDownloadFileResponseMsg()) {
+            throw new IllegalStateException("Controller is supposed to give back the DownloadFileResponse");
+        }
+        Messages.DownloadFileResponse downloadFileResponseMsg = msgWrapper.getDownloadFileResponseMsg();
+
+        for (Messages.DownloadFileResponse.ChunkLocation chunkLocation : downloadFileResponseMsg.getChunkLocationsList()) {
+            List<ComponentAddress> nodes = new ArrayList<>();
+            for (Messages.StorageNode node : chunkLocation.getStorageNodesList()) {
+                nodes.add(new ComponentAddress(node.getHost(), node.getPort()));
+            }
+            logger.debug("Chunk " + chunkLocation.getSequenceNo() + " is on " + nodes);
+        }
+
+    }
+
+    private static void sendFile(ComponentAddress controllerAddr, String filename) throws IOException, InterruptedException {
         GetStorageNodeListRunnable storageNodeListRunnable = new GetStorageNodeListRunnable(controllerAddr, storageNodeAddressesAvailableSema);
         new Thread(storageNodeListRunnable).start();
-
         sendChunkedSampleFile(filename, storageNodeListRunnable);
     }
 

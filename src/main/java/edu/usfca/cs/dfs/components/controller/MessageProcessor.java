@@ -11,6 +11,7 @@ import java.util.*;
 
 class MessageProcessor implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(MessageProcessor.class);
+    private static final Random random = new Random();
     private final Map<ComponentAddress, MessageFifoQueue> messageQueues;
     private final Set<ComponentAddress> onlineStorageNodes;
     private StorageNodeAddressService storageNodeAddressService;
@@ -35,12 +36,44 @@ class MessageProcessor implements Runnable {
                     processHeartbeatMsg(msgWrapper);
                 } else if (msgWrapper.hasGetStoragesNodesRequestMsg()) {
                     processGetStorageNodesRequestMsg();
+                } else if (msgWrapper.hasDownloadFileMsg()) {
+                    processDownloadFileMsg(socket, msgWrapper);
                 }
             } catch (IOException e) {
                 logger.error("Error reading from socket", e);
             }
         }
         removeMessageQueue();
+    }
+
+    private void processDownloadFileMsg(Socket socket, Messages.MessageWrapper msgWrapper) throws IOException {
+        Messages.DownloadFile msg = msgWrapper.getDownloadFileMsg();
+        String fileName = msg.getFileName();
+        DFSFile file = fileTable.getFile(fileName);
+
+        SortedSet<ChunkRef> chunks = file.getChunks();
+
+        Messages.DownloadFileResponse.Builder downloadFileResponseBuilder = Messages.DownloadFileResponse.newBuilder();
+        downloadFileResponseBuilder.setFilename(fileName);
+
+        for (ChunkRef chunk : chunks) {
+            Messages.DownloadFileResponse.ChunkLocation.Builder chunkLocationBuilder = Messages.DownloadFileResponse.ChunkLocation.newBuilder()
+                    .setSequenceNo(chunk.getSequenceNo());
+            for (ComponentAddress storageNode : chunk.getReplicaLocations()) {
+                chunkLocationBuilder.addStorageNodes(Messages.StorageNode.newBuilder()
+                        .setHost(storageNode.getHost())
+                        .setPort(storageNode.getPort())
+                        .build());
+            }
+            downloadFileResponseBuilder.addChunkLocations(chunkLocationBuilder.build());
+        }
+
+        Messages.DownloadFileResponse internalMsg = downloadFileResponseBuilder.build();
+        Messages.MessageWrapper outMsgWrapper = Messages.MessageWrapper.newBuilder()
+                .setDownloadFileResponseMsg(internalMsg)
+                .build();
+        logger.debug("Telling client where " + fileName + " parts are");
+        outMsgWrapper.writeDelimitedTo(socket.getOutputStream());
     }
 
     private void removeMessageQueue() {

@@ -61,7 +61,7 @@ message DownloadFileResponse {
     string filename = 1;
     message ChunkLocation {
         int32 sequenceNo = 1;
-        StorageNode storageNode = 2;
+        repeated StorageNode storageNodes = 2;
     }
     repeated ChunkLocation chunkLocations = 2;
 }

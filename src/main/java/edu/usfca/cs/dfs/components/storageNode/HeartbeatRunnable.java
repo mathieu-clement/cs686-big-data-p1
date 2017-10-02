@@ -33,6 +33,7 @@ class HeartbeatRunnable implements Runnable {
         while (true) {
             try {
                 Socket socket = controllerAddr.getSocket();
+                logger.debug("Connected to controller");
 
                 while (true) {
                     Messages.Heartbeat heartbeatMsg = Messages.Heartbeat.newBuilder()

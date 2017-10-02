@@ -6,7 +6,10 @@ import org.slf4j.LoggerFactory;
 
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 public class Controller {
 
@@ -46,7 +49,13 @@ public class Controller {
             Socket socket = serverSocket.accept();
             StorageNodeAddressService storageNodeAddressService = new StorageNodeAddressService();
             new Thread(new MessageProcessor(storageNodeAddressService, onlineStorageNodes, messageQueues, fileTable, socket)).start();
-            new Thread(new MessageSender(storageNodeAddressService, messageQueues, socket));
+
+            // Though it will work fine without it, sleeping for a while will avoid the message sender
+            // to run into a race condition where the message queue doesn't exist yet because we have not
+            // parsed the heartbeat to figure out the hostname and port of the storage node.
+            // This avoids an error to be displayed every time a storage node gets online.
+            Thread.sleep(1000);
+            new Thread(new MessageSender(storageNodeAddressService, messageQueues, socket)).start();
         }
     }
 

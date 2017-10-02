@@ -40,10 +40,10 @@ class MessageProcessor implements Runnable {
                 logger.error("Error reading from socket", e);
             }
         }
-        removeFromMessageQueue();
+        removeMessageQueue();
     }
 
-    private void removeFromMessageQueue() {
+    private void removeMessageQueue() {
         if (storageNodeAddressService.getStorageNodeAddress() != null) {
             messageQueues.remove(storageNodeAddressService.getStorageNodeAddress());
         }

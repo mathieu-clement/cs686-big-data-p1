@@ -62,7 +62,7 @@ public class ChunkReplicationRunnable implements Runnable {
             int missingReplicas = minReplicas - chunk.getReplicaCount();
             Set<ComponentAddress> additionalNodes = Utils.chooseNrandomOrMin(missingReplicas, unusedStorageNodes);
             if (additionalNodes.size() != missingReplicas) {
-                logger.warn("We need " + missingReplicas + " more replicas, but as of now we can only get " + additionalNodes.size() + " more.");
+                logger.warn(chunk + ": " + missingReplicas + " more replica(s) needed, but as of now we can only get " + additionalNodes.size() + " more.");
 
             }
 
@@ -86,7 +86,7 @@ public class ChunkReplicationRunnable implements Runnable {
                         .build();
 
                 ComponentAddress senderNode = Utils.chooseNrandomOrMin(1, chunk.getReplicaLocations()).iterator().next();
-                logger.debug("Telling " + senderNode + " to transfer " + chunk + " to " + additionalNode);
+                logger.trace("Telling " + senderNode + " to transfer " + chunk + " to " + additionalNode);
                 messageQueues.get(senderNode).queue(msg);
             }
         }

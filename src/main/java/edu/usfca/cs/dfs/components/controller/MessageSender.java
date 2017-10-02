@@ -34,6 +34,11 @@ public class MessageSender implements Runnable {
                 logger.error("Could not get next message from queue", e);
             } catch (IOException e) {
                 logger.error("Could not send message", e);
+                try {
+                    socket.close();
+                } catch (IOException ioe) {
+                    logger.error("Could not close socket", ioe);
+                }
             }
         }
     }

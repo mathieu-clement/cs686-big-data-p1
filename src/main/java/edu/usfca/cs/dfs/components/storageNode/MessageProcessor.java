@@ -32,18 +32,20 @@ class MessageProcessor implements Runnable {
 
     @Override
     public void run() {
-        try {
-            Messages.MessageWrapper msg = Messages.MessageWrapper.parseDelimitedFrom(
-                    socket.getInputStream());
+        while (!socket.isClosed()) {
+            try {
+                Messages.MessageWrapper msg = Messages.MessageWrapper.parseDelimitedFrom(
+                        socket.getInputStream());
 
-            // Dispatch
-            if (msg.hasStoreChunkMsg()) {
-                processStoreChunkMsg(socket, msg);
-            } else if (msg.hasOrderSendChunkMsg()) {
-                processOrderSendChunkMsg(socket, msg);
+                // Dispatch
+                if (msg.hasStoreChunkMsg()) {
+                    processStoreChunkMsg(socket, msg);
+                } else if (msg.hasOrderSendChunkMsg()) {
+                    processOrderSendChunkMsg(socket, msg);
+                }
+            } catch (IOException e) {
+                logger.error("Error while parsing message or other IO error", e);
             }
-        } catch (IOException e) {
-            logger.error("Error while parsing message or other IO error", e);
         }
     }
 

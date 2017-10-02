@@ -9,7 +9,8 @@ message StoreChunk {
 }
 
 message DownloadChunk {
-    int32 sequenceNo = 1;
+    string filename = 1;
+    int32 sequenceNo = 2;
 }
 
 message DownloadFile {

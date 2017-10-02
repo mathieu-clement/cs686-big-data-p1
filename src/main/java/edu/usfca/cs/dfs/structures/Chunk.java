@@ -110,7 +110,7 @@ public class Chunk implements Comparable<Chunk> {
         for (Chunk chunk : chunks) {
             File chunkFile = chunk.getChunkLocalPath().toFile();
             FileInputStream fis = new FileInputStream(chunkFile);
-            byte[] readBuf = new byte[2048];
+            byte[] readBuf = new byte[4096];
             int c;
             while ((c = fis.read(readBuf)) != -1) {
                 fos.write(readBuf, 0, c);

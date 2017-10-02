@@ -86,7 +86,10 @@ public class Client {
 
         logger.info("Assembling chunks to file " + filename);
         File file = Chunk.createFileFromChunks(chunks, filename);
-        logger.info("File assembled. Size: " + Files.size(file.toPath()));
+        long bytes = Files.size(file.toPath());
+        double megabytes = bytes / 1e6;
+        megabytes = ((int) Math.round(100 * megabytes)) / 100.0; // round to two decimals
+        logger.info("File assembled. Size: " + megabytes + " MB");
 
         // Cleanup
         logger.debug("Deleting all chunks from local filesystem");

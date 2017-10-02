@@ -106,18 +106,18 @@ public class Chunk implements Comparable<Chunk> {
                 throw new IllegalStateException("File already exists.");
             }
         }
-        BufferedWriter writer = new BufferedWriter(new FileWriter(outputFile));
+        FileOutputStream fos = new FileOutputStream(outputFile);
         for (Chunk chunk : chunks) {
             File chunkFile = chunk.getChunkLocalPath().toFile();
-            BufferedReader reader = new BufferedReader(new FileReader(chunkFile));
-            char[] readBuf = new char[1024];
+            FileInputStream fis = new FileInputStream(chunkFile);
+            byte[] readBuf = new byte[2048];
             int c;
-            while ((c = reader.read(readBuf)) != -1) {
-                writer.write(readBuf, 0, c);
+            while ((c = fis.read(readBuf)) != -1) {
+                fos.write(readBuf, 0, c);
             }
-            reader.close();
+            fis.close();
         }
-        writer.close();
+        fos.close();
 
         return outputFile;
     }

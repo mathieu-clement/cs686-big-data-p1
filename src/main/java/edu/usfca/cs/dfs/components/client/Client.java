@@ -57,8 +57,6 @@ public class Client {
         }
     }
 
-    private static Map<ComponentAddress, Socket> storageNodeSockets = new HashMap<>();
-
     private static void downloadFile(ComponentAddress controllerAddr, String filename) throws IOException, ExecutionException, InterruptedException {
         Messages.MessageWrapper msg = Messages.MessageWrapper.newBuilder()
                 .setDownloadFileMsg(
@@ -73,7 +71,7 @@ public class Client {
 
         Messages.MessageWrapper msgWrapper = Messages.MessageWrapper.parseDelimitedFrom(controllerSocket.getInputStream());
         if (!msgWrapper.hasDownloadFileResponseMsg()) {
-            throw new IllegalStateException("Controller is supposed to give back the DownloadFileResponse");
+            throw new IllegalStateException("Controller is supposed to give back the DownloadFileResponse but got " + msgWrapper);
         }
         Messages.DownloadFileResponse downloadFileResponseMsg = msgWrapper.getDownloadFileResponseMsg();
 
@@ -90,10 +88,6 @@ public class Client {
         logger.debug("Deleting all chunks from local filesystem");
         for (Chunk chunk : chunks) {
             chunk.getChunkLocalPath().toFile().delete();
-        }
-
-        for (Socket socket : storageNodeSockets.values()) {
-            socket.close();
         }
     }
 
@@ -119,24 +113,28 @@ public class Client {
         }
 
         SortedSet<Chunk> chunks = new TreeSet<>();
-        for (int sequenceNo : chunkLocations.keySet()) {
-            chunks.add(futures.get(sequenceNo).get());
-        }
-
-        for (Socket s : sockets.values()) {
-            s.close();
-        }
 
         try {
-            logger.trace("Attempting to shutdown executor");
-            executor.shutdown();
-            executor.awaitTermination(5, TimeUnit.SECONDS);
-        } finally {
-            if (!executor.isTerminated()) {
-                logger.error("Some tasks didn't finish.");
+            for (int sequenceNo : chunkLocations.keySet()) {
+                chunks.add(futures.get(sequenceNo).get());
             }
-            executor.shutdownNow();
-            logger.trace("ExecutorService shutdown finished.");
+
+            for (Socket socket : sockets.values()) {
+                socket.close();
+            }
+        } finally {
+
+            try {
+                logger.trace("Attempting to shutdown executor");
+                executor.shutdown();
+                executor.awaitTermination(5, TimeUnit.SECONDS);
+            } finally {
+                if (!executor.isTerminated()) {
+                    logger.error("Some tasks didn't finish.");
+                }
+                executor.shutdownNow();
+                logger.trace("ExecutorService shutdown finished.");
+            }
         }
 
         return chunks;
@@ -158,7 +156,7 @@ public class Client {
             throw new IllegalStateException("Response to DownloadChunk should have been StoreChunk. Got: " + TextFormat.printToString(msgWrapper));
         }
 
-        return processStoreChunkMsg(socket, msgWrapper);
+        return processStoreChunkMsg(msgWrapper);
     }
 
     private static class ThreadStorageNodeKey {
@@ -168,14 +166,6 @@ public class Client {
         public ThreadStorageNodeKey(long threadId, ComponentAddress storageNode) {
             this.threadId = threadId;
             this.storageNode = storageNode;
-        }
-
-        public long getThreadId() {
-            return threadId;
-        }
-
-        public ComponentAddress getStorageNode() {
-            return storageNode;
         }
 
         @Override
@@ -193,39 +183,11 @@ public class Client {
         }
     }
 
-    private static class DownloadChunkTask implements Callable<Chunk> {
-
-        private final String filename;
-        private final int sequenceNo;
-        private final ComponentAddress storageNode;
-        private final Socket socket;
-
-        public DownloadChunkTask(String filename, int sequenceNo, ComponentAddress storageNode, Map<ThreadStorageNodeKey, Socket> sockets) throws IOException {
-            this.filename = filename;
-            this.sequenceNo = sequenceNo;
-            this.storageNode = storageNode;
-
-            long threadId = Thread.currentThread().getId();
-            ThreadStorageNodeKey key = new ThreadStorageNodeKey(threadId, storageNode);
-            if (sockets.get(key) == null) {
-                sockets.put(key, storageNode.getSocket());
-            }
-
-            this.socket = sockets.get(key);
-        }
-
-        @Override
-        public Chunk call() throws Exception {
-            return downloadChunk(filename, sequenceNo, socket);
-        }
-    }
-
-    private static Chunk processStoreChunkMsg(Socket socket, Messages.MessageWrapper msgWrapper) throws IOException {
+    private static Chunk processStoreChunkMsg(Messages.MessageWrapper msgWrapper) throws IOException {
         Messages.StoreChunk storeChunkMsg
                 = msgWrapper.getStoreChunkMsg();
         logger.debug("Storing file name: "
-                + storeChunkMsg.getFileName() + " Chunk #" + storeChunkMsg.getSequenceNo() + " received from " +
-                socket.getRemoteSocketAddress().toString());
+                + storeChunkMsg.getFileName() + " Chunk #" + storeChunkMsg.getSequenceNo());
 
         String storageDirectory = DFSProperties.getInstance().getClientChunksDir();
         File storageDirectoryFile = new File(storageDirectory);
@@ -255,11 +217,64 @@ public class Client {
         return new Chunk(storeChunkMsg.getFileName(), storeChunkMsg.getSequenceNo(), Files.size(chunkFilePath), storeChunkMsg.getChecksum(), chunkFilePath);
     }
 
-    private static Socket getSocket(ComponentAddress storageNode) throws IOException {
-        if (storageNodeSockets.get(storageNode) == null || storageNodeSockets.get(storageNode).isClosed()) {
-            storageNodeSockets.put(storageNode, storageNode.getSocket());
+    private static void sendChunkedSampleFile(String filename, GetStorageNodeListRunnable storageNodeListRunnable) throws IOException, InterruptedException {
+
+        List<ComponentAddress> storageNodeAddresses;
+
+        try {
+            while ((storageNodeAddresses = storageNodeListRunnable.getStorageNodeAddresses()) == null) {
+                storageNodeAddressesAvailableSema.acquire();
+            }
+        } finally {
+            storageNodeAddressesAvailableSema.release();
         }
-        return storageNodeSockets.get(storageNode);
+
+        int storageNodeIndex = random.nextInt(storageNodeAddresses.size());
+        int nbStorageNodes = storageNodeAddresses.size();
+
+        Chunk[] chunks = Chunk.createChunksFromFile(
+                filename,
+                DFSProperties.getInstance().getChunkSize(),
+                DFSProperties.getInstance().getClientChunksDir());
+        for (Chunk chunk : chunks) {
+            int i = (storageNodeIndex + 1) % nbStorageNodes;
+            storageNodeIndex = i;
+            logger.trace("Will send chunk " + chunk.getSequenceNo() + " to node #" + i);
+
+            ComponentAddress storageNodeAddr = storageNodeAddresses.get(i);
+
+            logger.debug("Connecting to storage node " + storageNodeAddr);
+            Socket socket = storageNodeAddr.getSocket();
+
+            logger.debug("Sending file '" + chunk.getFilename() + "' to storage node " + storageNodeAddr);
+            // Read chunk data from disk
+            File chunkFile = chunk.getChunkLocalPath().toFile();
+            FileInputStream fis = new FileInputStream(chunkFile);
+            ByteString data = ByteString.readFrom(fis);
+            fis.close();
+
+            Messages.StoreChunk storeChunkMsg
+                    = Messages.StoreChunk.newBuilder()
+                    .setFileName(chunk.getFilename())
+                    .setSequenceNo(chunk.getSequenceNo())
+                    .setChecksum(chunk.getChecksum())
+                    .setData(data)
+                    .build();
+
+            Messages.MessageWrapper msgWrapper =
+                    Messages.MessageWrapper.newBuilder()
+                            .setStoreChunkMsg(storeChunkMsg)
+                            .build();
+
+            msgWrapper.writeDelimitedTo(socket.getOutputStream());
+
+            logger.debug("Close connection to storage node " + storageNodeAddr.getHost());
+            logger.debug("Deleting chunk file " + chunkFile.getName());
+            if (!chunkFile.delete()) {
+                logger.warn("Chunk file " + chunkFile.getName() + " could not be deleted.");
+            }
+            socket.close();
+        }
     }
 
     private static Map<Integer, List<ComponentAddress>> parseChunkLocations(Messages.DownloadFileResponse downloadFileResponseMsg) {
@@ -296,63 +311,30 @@ public class Client {
         System.err.println(sb.toString());
     }
 
-    private static void sendChunkedSampleFile(String filename, GetStorageNodeListRunnable storageNodeListRunnable) throws IOException, InterruptedException {
+    private static class DownloadChunkTask implements Callable<Chunk> {
 
-        List<ComponentAddress> storageNodeAddresses;
+        private final String filename;
+        private final int sequenceNo;
+        private final ComponentAddress storageNode;
+        private final Map<ThreadStorageNodeKey, Socket> sockets;
 
-        try {
-            while ((storageNodeAddresses = storageNodeListRunnable.getStorageNodeAddresses()) == null) {
-                storageNodeAddressesAvailableSema.acquire();
-            }
-        } finally {
-            storageNodeAddressesAvailableSema.release();
+        public DownloadChunkTask(String filename, int sequenceNo, ComponentAddress storageNode, Map<ThreadStorageNodeKey, Socket> sockets) throws IOException {
+            this.filename = filename;
+            this.sequenceNo = sequenceNo;
+            this.storageNode = storageNode;
+            this.sockets = sockets;
         }
 
-        int storageNodeIndex = random.nextInt(storageNodeAddresses.size());
-        int nbStorageNodes = storageNodeAddresses.size();
-
-        Chunk[] chunks = Chunk.createChunksFromFile(
-                filename,
-                DFSProperties.getInstance().getChunkSize(),
-                DFSProperties.getInstance().getClientChunksDir());
-        for (Chunk chunk : chunks) {
-            int i = (storageNodeIndex + 1) % nbStorageNodes;
-            storageNodeIndex = i;
-            logger.trace("Will send chunk " + chunk.getSequenceNo() + " to node #" + i);
-
-            ComponentAddress storageNodeAddr = storageNodeAddresses.get(i);
-
-            logger.debug("Connecting to storage node " + storageNodeAddr);
-            Socket sock = storageNodeAddr.getSocket();
-
-            logger.debug("Sending file '" + chunk.getFilename() + "' to storage node " + storageNodeAddr);
-            // Read chunk data from disk
-            File chunkFile = chunk.getChunkLocalPath().toFile();
-            FileInputStream fis = new FileInputStream(chunkFile);
-            ByteString data = ByteString.readFrom(fis);
-            fis.close();
-
-            Messages.StoreChunk storeChunkMsg
-                    = Messages.StoreChunk.newBuilder()
-                    .setFileName(chunk.getFilename())
-                    .setSequenceNo(chunk.getSequenceNo())
-                    .setChecksum(chunk.getChecksum())
-                    .setData(data)
-                    .build();
-
-            Messages.MessageWrapper msgWrapper =
-                    Messages.MessageWrapper.newBuilder()
-                            .setStoreChunkMsg(storeChunkMsg)
-                            .build();
-
-            msgWrapper.writeDelimitedTo(sock.getOutputStream());
-
-            logger.debug("Close connection to storage node " + storageNodeAddr.getHost());
-            logger.debug("Deleting chunk file " + chunkFile.getName());
-            if (!chunkFile.delete()) {
-                logger.warn("Chunk file " + chunkFile.getName() + " could not be deleted.");
+        @Override
+        public Chunk call() throws Exception {
+            long threadId = Thread.currentThread().getId();
+            ThreadStorageNodeKey key = new ThreadStorageNodeKey(threadId, storageNode);
+            if (sockets.get(key) == null) {
+                sockets.put(key, storageNode.getSocket());
             }
-            sock.close();
+            Socket socket = sockets.get(key);
+
+            return downloadChunk(filename, sequenceNo, socket);
         }
     }
 

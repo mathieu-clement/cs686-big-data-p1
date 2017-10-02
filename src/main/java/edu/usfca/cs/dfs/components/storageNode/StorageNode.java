@@ -125,6 +125,7 @@ public class StorageNode {
         logger.debug("Listening on port " + port + "...");
         while (true) {
             Socket socket = srvSocket.accept();
+            logger.trace("New connection from " + socket.getRemoteSocketAddress());
             new Thread(new MessageProcessor(socket, chunks)).start();
         }
     }

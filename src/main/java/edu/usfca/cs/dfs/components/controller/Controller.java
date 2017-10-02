@@ -47,6 +47,7 @@ public class Controller {
 
         while (true) {
             Socket socket = serverSocket.accept();
+            logger.trace("New connection from " + socket.getRemoteSocketAddress());
             StorageNodeAddressService storageNodeAddressService = new StorageNodeAddressService();
             new Thread(new MessageProcessor(storageNodeAddressService, onlineStorageNodes, messageQueues, fileTable, socket)).start();
 

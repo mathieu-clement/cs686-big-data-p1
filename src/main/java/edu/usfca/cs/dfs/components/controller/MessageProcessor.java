@@ -28,15 +28,30 @@ class MessageProcessor implements Runnable {
 
     @Override
     public void run() {
-        while (!socket.isClosed()) {
+        int nullMessageCount = 0;
+        while (socket.isConnected()) {
             try {
                 Messages.MessageWrapper msgWrapper = Messages.MessageWrapper.parseDelimitedFrom(socket.getInputStream());
+
+                if (msgWrapper == null) {
+                    logger.warn("Incoming null message");
+                    nullMessageCount++;
+                    if (nullMessageCount == 10) {
+                        logger.error("Too many null messages in a row. Closing socket.");
+                        socket.close();
+                        return;
+                    } else {
+                        continue;
+                    }
+                }
 
                 if (msgWrapper.hasHeartbeatMsg()) {
                     processHeartbeatMsg(msgWrapper);
                 } else if (msgWrapper.hasGetStoragesNodesRequestMsg()) {
+                    logger.trace("Incoming get storage nodes request message");
                     processGetStorageNodesRequestMsg(socket);
                 } else if (msgWrapper.hasDownloadFileMsg()) {
+                    logger.trace("Incoming download file message");
                     processDownloadFileMsg(socket, msgWrapper);
                 }
             } catch (IOException e) {
@@ -50,6 +65,14 @@ class MessageProcessor implements Runnable {
         Messages.DownloadFile msg = msgWrapper.getDownloadFileMsg();
         String fileName = msg.getFileName();
         DFSFile file = fileTable.getFile(fileName);
+
+        if (file == null) {
+            Messages.MessageWrapper responseMsg = Messages.MessageWrapper.newBuilder()
+                    .setErrorMsg(Messages.Error.newBuilder().setText("Error: File not found").build())
+                    .build();
+            responseMsg.writeDelimitedTo(socket.getOutputStream());
+            return;
+        }
 
         SortedSet<ChunkRef> chunks = file.getChunks();
 

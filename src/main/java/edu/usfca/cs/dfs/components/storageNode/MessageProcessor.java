@@ -31,29 +31,51 @@ class MessageProcessor implements Runnable {
     private final Map<ComponentAddress, Socket> storageNodeSockets = new HashMap<>();
 
     public MessageProcessor(Socket socket, Map<String, SortedSet<Chunk>> chunks) {
+        logger.trace("Starting Message Processor, thread " + Thread.currentThread().getName());
         this.socket = socket;
         this.chunks = chunks;
     }
 
     @Override
     public void run() {
+        int countExceptions = 0;
+        int nullMessageCount = 0;
+
         while (!socket.isClosed()) {
             try {
                 Messages.MessageWrapper msg = Messages.MessageWrapper.parseDelimitedFrom(
                         socket.getInputStream());
 
-                if (msg == null) continue;
+                if (msg == null) {
+                    nullMessageCount++;
+                    logger.warn("Incoming null message");
+                    if (nullMessageCount == 10) {
+                        logger.error("Too many null messages. Closing socket");
+                        socket.close();
+                        return;
+                    } else {
+                        continue;
+                    }
+                }
 
                 // Dispatch
                 if (msg.hasStoreChunkMsg()) {
+                    logger.trace("Incoming store chunk message");
                     processStoreChunkMsg(socket, msg);
                 } else if (msg.hasOrderSendChunkMsg()) {
+                    logger.trace("Incoming order send chunk message");
                     processOrderSendChunkMsg(msg);
                 } else if (msg.hasDownloadChunkMsg()) {
+                    logger.trace("Incoming download chunk message");
                     processDownloadChunkMsg(socket, msg);
                 }
             } catch (IOException e) {
                 logger.error("Error while parsing message or other IO error", e);
+                countExceptions++;
+                if (countExceptions == 10) {
+                    logger.error("Something is very wrong here. Too many problems when reading messages. Exiting.");
+                    System.exit(1);
+                }
             }
         }
     }

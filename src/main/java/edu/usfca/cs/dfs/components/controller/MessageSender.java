@@ -14,32 +14,44 @@ public class MessageSender implements Runnable {
 
     private final StorageNodeAddressService storageNodeAddressService;
     private final Map<ComponentAddress, MessageFifoQueue> messageQueues;
-    private final Socket socket;
+    private Socket mSocket;
 
-    public MessageSender(StorageNodeAddressService storageNodeAddressService, Map<ComponentAddress, MessageFifoQueue> messageQueues, Socket socket) {
+    public MessageSender(StorageNodeAddressService storageNodeAddressService, Map<ComponentAddress, MessageFifoQueue> messageQueues) {
         this.storageNodeAddressService = storageNodeAddressService;
         this.messageQueues = messageQueues;
-        this.socket = socket;
     }
 
     @Override
     public void run() {
-        MessageFifoQueue messageQueue = messageQueues.get(storageNodeAddressService.getStorageNodeAddress());
-        while (!socket.isClosed()) {
-            try {
-                Messages.MessageWrapper msg = messageQueue.next();
-                logger.trace("Sending message to " + socket.getRemoteSocketAddress() + ": " + msg);
-                msg.writeDelimitedTo(socket.getOutputStream());
-            } catch (InterruptedException e) {
-                logger.error("Could not get next message from queue", e);
-            } catch (IOException e) {
-                logger.error("Could not send message", e);
+        ComponentAddress storageNode = storageNodeAddressService.getStorageNodeAddress();
+        MessageFifoQueue messageQueue = messageQueues.get(storageNode);
+        try {
+            Socket socket = getSocket(storageNode);
+            while (!socket.isClosed()) {
                 try {
-                    socket.close();
-                } catch (IOException ioe) {
-                    logger.error("Could not close socket", ioe);
-                }
-            }
+                    Messages.MessageWrapper msg = messageQueue.next();
+                    logger.trace("Sending message to " + socket.getRemoteSocketAddress() + ": " + msg);
+                    msg.writeDelimitedTo(socket.getOutputStream());
+                } catch (InterruptedException e) {
+                    logger.error("Could not get next message from queue", e);
+                } catch (IOException e) {
+                    logger.error("Could not send message", e);
+                    try {
+                        socket.close();
+                    } catch (IOException ioe) {
+                        logger.error("Could not close mSocket", ioe);
+                    } // try close mSocket
+                } // try message send
+            } // while
+        } catch (IOException e) {
+            logger.error("Could not create mSocket to " + storageNode);
+        } // try get mSocket
+    } // end of method run()
+
+    private Socket getSocket(ComponentAddress storageNodeAddress) throws IOException {
+        if (mSocket == null || mSocket.isClosed()) {
+            mSocket = storageNodeAddress.getSocket();
         }
+        return mSocket;
     }
 }

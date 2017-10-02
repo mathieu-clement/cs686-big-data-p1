@@ -55,7 +55,7 @@ public class Controller {
             // parsed the heartbeat to figure out the hostname and port of the storage node.
             // This avoids an error to be displayed every time a storage node gets online.
             Thread.sleep(1000);
-            new Thread(new MessageSender(storageNodeAddressService, messageQueues, socket)).start();
+            new Thread(new MessageSender(storageNodeAddressService, messageQueues)).start();
         }
     }
 

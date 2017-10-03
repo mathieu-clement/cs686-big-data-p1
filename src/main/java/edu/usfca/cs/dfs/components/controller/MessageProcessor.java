@@ -55,12 +55,61 @@ class MessageProcessor implements Runnable {
                 } else if (msgWrapper.hasDownloadFileMsg()) {
                     logger.trace("Incoming download file message");
                     processDownloadFileMsg(socket, msgWrapper);
+                } else if (msgWrapper.hasGetFilesRequestMsg()) {
+                    logger.trace("Incoming get files request message");
+                    processGetFilesRequestMsg(socket);
                 }
             } catch (IOException e) {
                 logger.error("Error reading from socket", e);
             }
         }
         removeMessageQueue();
+    }
+
+    private void processGetFilesRequestMsg(Socket socket) throws IOException {
+        Map<ComponentAddress, Messages.StorageNode> storageNodeMap = new HashMap<>();
+        for (ComponentAddress address : onlineStorageNodes) {
+            storageNodeMap.put(address,
+                    Messages.StorageNode.newBuilder()
+                            .setHost(address.getHost())
+                            .setPort(address.getPort())
+                            .build());
+        }
+
+        List<Messages.DownloadFileResponse> downloadFileResponseMessages = new ArrayList<>();
+        for (String filename : fileTable.getFilenames()) {
+            DFSFile file = fileTable.getFile(filename);
+
+            List<Messages.DownloadFileResponse.ChunkLocation> chunkLocations = new ArrayList<>();
+            for (ChunkRef chunk : file.getChunks()) {
+                List<Messages.StorageNode> thisMsgStorageNodes = new ArrayList<>();
+                for (ComponentAddress address : chunk.getReplicaLocations()) {
+                    thisMsgStorageNodes.add(storageNodeMap.get(address));
+                }
+                chunkLocations.add(
+                        Messages.DownloadFileResponse.ChunkLocation.newBuilder()
+                                .setSequenceNo(chunk.getSequenceNo())
+                                .addAllStorageNodes(thisMsgStorageNodes)
+                                .build()
+                );
+            }
+
+            downloadFileResponseMessages.add(
+                    Messages.DownloadFileResponse.newBuilder()
+                            .setFilename(filename)
+                            .addAllChunkLocations(chunkLocations)
+                            .build()
+            );
+        }
+
+        Messages.MessageWrapper.newBuilder()
+                .setGetFilesResponseMsg(
+                        Messages.GetFilesResponse.newBuilder()
+                                .addAllFiles(downloadFileResponseMessages)
+                                .build()
+                )
+                .build()
+                .writeDelimitedTo(socket.getOutputStream());
     }
 
     private void processDownloadFileMsg(Socket socket, Messages.MessageWrapper msgWrapper) throws IOException {

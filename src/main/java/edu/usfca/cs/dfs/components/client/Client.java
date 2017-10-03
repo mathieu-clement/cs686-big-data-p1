@@ -43,6 +43,10 @@ public class Client {
                 listStorageNodes(controllerAddr);
                 break;
 
+            case "list-files":
+                listFiles(controllerAddr);
+                break;
+
             case "upload-file":
                 sendFile(controllerAddr, args[3]);
                 break;
@@ -58,6 +62,37 @@ public class Client {
             default:
                 printHelp();
                 System.exit(1);
+        }
+    }
+
+    private static void listFiles(ComponentAddress controllerAddr) throws IOException {
+        Socket socket = controllerAddr.getSocket();
+
+        // Send request
+        Messages.MessageWrapper.newBuilder()
+                .setGetFilesRequestMsg(Messages.GetFilesRequest.newBuilder().build())
+                .build()
+                .writeDelimitedTo(socket.getOutputStream());
+
+        // Get response
+        Messages.MessageWrapper msgWrapper = Messages.MessageWrapper.parseDelimitedFrom(socket.getInputStream());
+        if (!msgWrapper.hasGetFilesResponseMsg()) {
+            throw new IllegalStateException("Expected GetFilesResponse message, got: " + msgWrapper);
+        }
+        Messages.GetFilesResponse msg = msgWrapper.getGetFilesResponseMsg();
+
+        for (Messages.DownloadFileResponse downloadFileResponse : msg.getFilesList()) {
+            String filename = downloadFileResponse.getFilename();
+            System.out.println("Filename: " + filename);
+            for (Messages.DownloadFileResponse.ChunkLocation chunkLocation : downloadFileResponse.getChunkLocationsList()) {
+                System.out.print(String.format("    Chunk #%02d at ", chunkLocation.getSequenceNo()));
+                SortedSet<ComponentAddress> storageNodes = new TreeSet<>();
+                for (Messages.StorageNode msgStorageNode : chunkLocation.getStorageNodesList()) {
+                    storageNodes.add(new ComponentAddress(msgStorageNode.getHost(), msgStorageNode.getPort()));
+                }
+                System.out.println(storageNodes);
+            }
+            System.out.println();
         }
     }
 

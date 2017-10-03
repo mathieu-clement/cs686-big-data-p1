@@ -36,9 +36,13 @@ public class Client {
 
         ComponentAddress controllerAddr = new ComponentAddress(args[0], Integer.parseInt(args[1]));
 
-        String command = args[2];
+        String command = args[2].toLowerCase();
 
         switch (command) {
+            case "list-storage-nodes":
+                listStorageNodes(controllerAddr);
+                break;
+
             case "upload-file":
                 sendFile(controllerAddr, args[3]);
                 break;
@@ -54,6 +58,25 @@ public class Client {
             default:
                 printHelp();
                 System.exit(1);
+        }
+    }
+
+    private static void listStorageNodes(ComponentAddress controllerAddr) throws IOException {
+        List<ComponentAddress> storageNodes = GetStorageNodeListRunnable.fetchStorageNodes(controllerAddr);
+        if (storageNodes.isEmpty()) {
+            System.out.println("No storage nodes found.");
+            return;
+        }
+
+        String header = String.format("%-40s %5s", "Host", "Port");
+        System.out.println(header);
+        for (int i = 0; i < header.length(); ++i) {
+            System.out.print("-");
+        }
+        System.out.println();
+
+        for (ComponentAddress storageNode : storageNodes) {
+            System.out.println(String.format("%-40s %5d", storageNode.getHost(), storageNode.getPort()));
         }
     }
 
@@ -219,15 +242,7 @@ public class Client {
 
     private static void sendChunkedSampleFile(String filename, GetStorageNodeListRunnable storageNodeListRunnable) throws IOException, InterruptedException {
 
-        List<ComponentAddress> storageNodeAddresses;
-
-        try {
-            while ((storageNodeAddresses = storageNodeListRunnable.getStorageNodeAddresses()) == null) {
-                storageNodeAddressesAvailableSema.acquire();
-            }
-        } finally {
-            storageNodeAddressesAvailableSema.release();
-        }
+        List<ComponentAddress> storageNodeAddresses = fetchStorageNodes(storageNodeListRunnable);
 
         int storageNodeIndex = random.nextInt(storageNodeAddresses.size());
         int nbStorageNodes = storageNodeAddresses.size();
@@ -275,6 +290,19 @@ public class Client {
             }
             socket.close();
         }
+    }
+
+    private static List<ComponentAddress> fetchStorageNodes(GetStorageNodeListRunnable storageNodeListRunnable) throws InterruptedException {
+        List<ComponentAddress> storageNodeAddresses;
+
+        try {
+            while ((storageNodeAddresses = storageNodeListRunnable.getStorageNodeAddresses()) == null) {
+                storageNodeAddressesAvailableSema.acquire();
+            }
+        } finally {
+            storageNodeAddressesAvailableSema.release();
+        }
+        return storageNodeAddresses;
     }
 
     private static Map<Integer, List<ComponentAddress>> parseChunkLocations(Messages.DownloadFileResponse downloadFileResponseMsg) {

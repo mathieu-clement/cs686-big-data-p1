@@ -13,6 +13,9 @@ DESCRIPTION
     upload and download chunks of files). It is the part of the
     Distributed File System (DFS) that allows user interaction.
 
+    list-storage-nodes
+        Lists all the storage nodes seen by the controller.
+
     list-files
         Retrieves the names of the files reachable by the controller.
 

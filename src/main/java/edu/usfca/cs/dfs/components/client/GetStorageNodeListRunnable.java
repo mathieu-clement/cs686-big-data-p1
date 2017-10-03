@@ -21,26 +21,30 @@ class GetStorageNodeListRunnable implements Runnable {
         this.storageNodeAddressesAvailableSema = storageNodeAddressesAvailableSema;
     }
 
+    public static List<ComponentAddress> fetchStorageNodes(ComponentAddress controllerAddr) throws IOException {
+        Socket socket = controllerAddr.getSocket();
+        Messages.GetStorageNodesRequest storageNodesRequestMsg = Messages.GetStorageNodesRequest.newBuilder().build();
+        Messages.MessageWrapper sentMsgWrapper = Messages.MessageWrapper.newBuilder()
+                .setGetStoragesNodesRequestMsg(storageNodesRequestMsg)
+                .build();
+
+        logger.debug("Asking for list of storage nodes...");
+        sentMsgWrapper.writeDelimitedTo(socket.getOutputStream());
+
+        logger.debug("Waiting for list of storage nodes...");
+        Messages.MessageWrapper receivedMsgWrapper = Messages.MessageWrapper.parseDelimitedFrom(socket.getInputStream());
+        if (!receivedMsgWrapper.hasGetStorageNodesResponseMsg()) {
+            throw new UnsupportedOperationException("Expected storage node list response, but got something else.");
+        }
+        Messages.GetStorageNodesResponse responseMsg = receivedMsgWrapper.getGetStorageNodesResponseMsg();
+
+        return Client.toComponentAddresses(responseMsg.getNodesList());
+    }
+
     @Override
     public void run() {
         try {
-            Socket socket = controllerAddr.getSocket();
-            Messages.GetStorageNodesRequest storageNodesRequestMsg = Messages.GetStorageNodesRequest.newBuilder().build();
-            Messages.MessageWrapper sentMsgWrapper = Messages.MessageWrapper.newBuilder()
-                    .setGetStoragesNodesRequestMsg(storageNodesRequestMsg)
-                    .build();
-
-            logger.debug("Asking for list of storage nodes...");
-            sentMsgWrapper.writeDelimitedTo(socket.getOutputStream());
-
-            logger.debug("Waiting for list of storage nodes...");
-            Messages.MessageWrapper receivedMsgWrapper = Messages.MessageWrapper.parseDelimitedFrom(socket.getInputStream());
-            if (!receivedMsgWrapper.hasGetStorageNodesResponseMsg()) {
-                throw new UnsupportedOperationException("Expected storage node list response, but got something else.");
-            }
-            Messages.GetStorageNodesResponse responseMsg = receivedMsgWrapper.getGetStorageNodesResponseMsg();
-
-            storageNodeAddresses = Client.toComponentAddresses(responseMsg.getNodesList());
+            storageNodeAddresses = fetchStorageNodes(controllerAddr);
             storageNodeAddressesAvailableSema.release();
 
             logger.debug("Received list of storage nodes: " + storageNodeAddresses);

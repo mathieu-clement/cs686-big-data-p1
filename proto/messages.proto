@@ -78,6 +78,14 @@ message GetFilesResponse {
     repeated DownloadFileResponse files = 1;
 }
 
+message GetFreeSpaceRequest {
+
+}
+
+message GetFreeSpaceResponse {
+    int64 freeSpace = 1;
+}
+
 message MessageWrapper {
     oneof msg {
         StoreChunk storeChunkMsg = 1;
@@ -92,5 +100,7 @@ message MessageWrapper {
         Error errorMsg = 10;
         GetFilesRequest getFilesRequestMsg = 11;
         GetFilesResponse getFilesResponseMsg = 12;
+        GetFreeSpaceRequest getFreeSpaceRequestMsg = 13;
+        GetFreeSpaceResponse getFreeSpaceResponseMsg = 14;
     }
 }

@@ -24,6 +24,11 @@ DESCRIPTION
         A shorter version of list-files that only outputs filenames,
         just like the "ls" command.
 
+    free-space
+        Show cumulative free space on DFS.
+        If two or more storage node instances use the same disk,
+        free space will be inaccurate.
+
     download-file filename
         Downloads a file from the DFS.
         In detail, it will query the controller about the location of

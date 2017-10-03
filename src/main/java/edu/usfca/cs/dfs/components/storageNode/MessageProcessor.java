@@ -68,6 +68,9 @@ class MessageProcessor implements Runnable {
                 } else if (msg.hasDownloadChunkMsg()) {
                     logger.trace("Incoming download chunk message");
                     processDownloadChunkMsg(socket, msg);
+                } else if (msg.hasGetFreeSpaceRequestMsg()) {
+                    logger.trace("Incoming get free space request message");
+                    processGetFreeSpaceRequestMsg(socket);
                 }
             } catch (IOException e) {
                 logger.error("Error while parsing message or other IO error", e);
@@ -78,6 +81,19 @@ class MessageProcessor implements Runnable {
                 }
             }
         }
+    }
+
+    private void processGetFreeSpaceRequestMsg(Socket socket) throws IOException {
+        Messages.MessageWrapper.newBuilder()
+                .setGetFreeSpaceResponseMsg(
+                        Messages.GetFreeSpaceResponse.newBuilder()
+                                .setFreeSpace(new File(DFSProperties.getInstance()
+                                        .getStorageNodeChunksDir()).getFreeSpace()
+                                )
+                                .build()
+                )
+                .build()
+                .writeDelimitedTo(socket.getOutputStream());
     }
 
     private void processDownloadChunkMsg(Socket socket, Messages.MessageWrapper messageWrapper) throws IOException {

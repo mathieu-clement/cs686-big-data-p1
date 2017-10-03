@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.*;
+import java.util.concurrent.*;
 
 class MessageProcessor implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(MessageProcessor.class);
@@ -58,12 +59,90 @@ class MessageProcessor implements Runnable {
                 } else if (msgWrapper.hasGetFilesRequestMsg()) {
                     logger.trace("Incoming get files request message");
                     processGetFilesRequestMsg(socket);
+                } else if (msgWrapper.hasGetFreeSpaceRequestMsg()) {
+                    logger.trace("Incoming get free space message");
+                    processGetFreeSpaceRequestMsg(socket);
                 }
             } catch (IOException e) {
                 logger.error("Error reading from socket", e);
             }
         }
         removeMessageQueue();
+    }
+
+    private void processGetFreeSpaceRequestMsg(Socket socket) throws IOException {
+        long globalFreeSpace = 0L;
+
+        List<Future<Long>> tasks = new ArrayList<>();
+        ExecutorService executor = Executors.newFixedThreadPool(4);
+        try {
+            for (ComponentAddress storageNode : onlineStorageNodes) {
+                GetFreeSpaceTask task = new GetFreeSpaceTask(storageNode);
+                tasks.add(executor.submit(task));
+            }
+
+            for (Future<Long> task : tasks) {
+                try {
+                    Long size = task.get();
+                    globalFreeSpace += size;
+                } catch (InterruptedException | ExecutionException e) {
+                    logger.error("Free space information not complete", e);
+                }
+            }
+
+            Messages.MessageWrapper.newBuilder()
+                    .setGetFreeSpaceResponseMsg(
+                            Messages.GetFreeSpaceResponse.newBuilder()
+                                    .setFreeSpace(globalFreeSpace)
+                                    .build()
+                    )
+                    .build()
+                    .writeDelimitedTo(socket.getOutputStream());
+        } finally {
+            try {
+                logger.trace("Attempting to shutdown executor");
+                executor.shutdown();
+                executor.awaitTermination(5, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                logger.error("Interrupted", e);
+            } finally {
+                if (!executor.isTerminated()) {
+                    logger.error("Some tasks didn't finish.");
+                }
+                executor.shutdownNow();
+                logger.trace("ExecutorService shutdown finished.");
+            }
+        }
+    }
+
+    private static class GetFreeSpaceTask implements Callable<Long> {
+
+        private final ComponentAddress storageNode;
+
+        private GetFreeSpaceTask(ComponentAddress storageNode) {
+            this.storageNode = storageNode;
+        }
+
+        @Override
+        public Long call() throws Exception {
+            long freeSpace;
+            Socket socket = storageNode.getSocket();
+
+            Messages.MessageWrapper.newBuilder()
+                    .setGetFreeSpaceRequestMsg(Messages.GetFreeSpaceRequest.newBuilder().build())
+                    .build()
+                    .writeDelimitedTo(socket.getOutputStream());
+
+            Messages.MessageWrapper responseMsgWrapper = Messages.MessageWrapper.parseDelimitedFrom(socket.getInputStream());
+            if (!responseMsgWrapper.hasGetFreeSpaceResponseMsg()) {
+                throw new IllegalStateException("Expected get free space response message, but got: " + responseMsgWrapper);
+            }
+            freeSpace = responseMsgWrapper.getGetFreeSpaceResponseMsg().getFreeSpace();
+
+            socket.close();
+
+            return freeSpace;
+        }
     }
 
     private void processGetFilesRequestMsg(Socket socket) throws IOException {

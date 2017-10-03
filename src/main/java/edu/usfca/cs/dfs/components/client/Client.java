@@ -60,14 +60,34 @@ public class Client {
                 downloadFile(controllerAddr, args[3]);
                 break;
 
-            case "delete-file":
-                throw new UnsupportedOperationException("Not implemented yet.");
-                // break
+            case "free-space":
+                freeSpace(controllerAddr);
+                break;
 
             default:
                 printHelp();
                 System.exit(1);
         }
+    }
+
+    private static void freeSpace(ComponentAddress controllerAddr) throws IOException {
+        Socket socket = controllerAddr.getSocket();
+
+        Messages.MessageWrapper.newBuilder()
+                .setGetFreeSpaceRequestMsg(Messages.GetFreeSpaceRequest.newBuilder().build())
+                .build()
+                .writeDelimitedTo(socket.getOutputStream());
+
+        Messages.MessageWrapper responseMsgWrapper = Messages.MessageWrapper.parseDelimitedFrom(socket.getInputStream());
+        if (!responseMsgWrapper.hasGetFreeSpaceResponseMsg()) {
+            throw new IllegalStateException("Expected get free space response message, but got: " + responseMsgWrapper);
+        }
+        long freeSpace = responseMsgWrapper.getGetFreeSpaceResponseMsg().getFreeSpace();
+        double gigabytes = freeSpace / 1e9;
+        gigabytes = ((int) Math.round(100 * gigabytes)) / 100.0; // round to two decimals
+        double gibibytes = freeSpace / 1024.0 / 1024.0 / 1024.0;
+        gibibytes = ((int) Math.round(100 * gibibytes)) / 100.0; // round to two decimals
+        System.out.println("Free space on DFS: " + gigabytes + " GB (" + gibibytes + " GiB)");
     }
 
     private static void listFiles(ComponentAddress controllerAddr, boolean filenamesOnly) throws IOException {

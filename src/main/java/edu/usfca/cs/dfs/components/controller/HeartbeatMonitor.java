@@ -41,6 +41,7 @@ public class HeartbeatMonitor implements Runnable {
                             onlineStorageNodes.remove(storageNode);
                         }
                         fileTable.onStorageNodeOffline(storageNode);
+                        heartbeats.remove(storageNode);
                     }
                 }
 

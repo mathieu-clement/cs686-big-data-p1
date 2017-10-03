@@ -5,9 +5,7 @@ import edu.usfca.cs.dfs.structures.ComponentAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Date;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class HeartbeatMonitor implements Runnable {
 
@@ -29,6 +27,10 @@ public class HeartbeatMonitor implements Runnable {
 
         try {
             while (true) {
+                // Can't remove items from list while iterating over it
+                List<ComponentAddress> toRemove = new ArrayList<>();
+
+
                 for (Map.Entry<ComponentAddress, Date> entry : heartbeats.entrySet()) {
                     Date lastHeartbeat = entry.getValue();
                     Date now = new Date();
@@ -41,6 +43,10 @@ public class HeartbeatMonitor implements Runnable {
                             onlineStorageNodes.remove(storageNode);
                         }
                         fileTable.onStorageNodeOffline(storageNode);
+                        toRemove.add(storageNode);
+                    }
+
+                    for (ComponentAddress storageNode : toRemove) {
                         heartbeats.remove(storageNode);
                     }
                 }

@@ -48,7 +48,7 @@ class MessageProcessor implements Runnable {
 
                 if (msg == null) {
                     nullMessageCount++;
-                    logger.warn("Incoming null message");
+                    logger.trace("Incoming null message");
                     if (nullMessageCount == 10) {
                         logger.error("Too many null messages. Closing socket");
                         socket.close();

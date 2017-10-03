@@ -327,12 +327,15 @@ public class Client {
 
         @Override
         public Chunk call() throws Exception {
+            /*
             long threadId = Thread.currentThread().getId();
             ThreadStorageNodeKey key = new ThreadStorageNodeKey(threadId, storageNode);
             if (sockets.get(key) == null) {
                 sockets.put(key, storageNode.getSocket());
             }
             Socket socket = sockets.get(key);
+            */
+            Socket socket = storageNode.getSocket();
 
             return downloadChunk(filename, sequenceNo, socket);
         }

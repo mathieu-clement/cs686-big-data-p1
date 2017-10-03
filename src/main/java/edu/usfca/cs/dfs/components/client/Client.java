@@ -44,7 +44,12 @@ public class Client {
                 break;
 
             case "list-files":
-                listFiles(controllerAddr);
+                listFiles(controllerAddr, false);
+                break;
+
+            case "ls":
+            case "list-filenames":
+                listFiles(controllerAddr, true);
                 break;
 
             case "upload-file":
@@ -65,7 +70,7 @@ public class Client {
         }
     }
 
-    private static void listFiles(ComponentAddress controllerAddr) throws IOException {
+    private static void listFiles(ComponentAddress controllerAddr, boolean filenamesOnly) throws IOException {
         Socket socket = controllerAddr.getSocket();
 
         // Send request
@@ -83,6 +88,10 @@ public class Client {
 
         for (Messages.DownloadFileResponse downloadFileResponse : msg.getFilesList()) {
             String filename = downloadFileResponse.getFilename();
+            if (filenamesOnly) {
+                System.out.println(filename);
+                continue;
+            }
             System.out.println("Filename: " + filename);
             for (Messages.DownloadFileResponse.ChunkLocation chunkLocation : downloadFileResponse.getChunkLocationsList()) {
                 System.out.print(String.format("    Chunk #%02d at ", chunkLocation.getSequenceNo()));

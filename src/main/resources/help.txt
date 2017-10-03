@@ -19,9 +19,10 @@ DESCRIPTION
     list-files
         Retrieves the names of the files reachable by the controller.
 
-    show-file filename
-        Shows information about a file such as how it has been "chunked",
-        where the replicas are located.
+    list-filenames
+    ls
+        A shorter version of list-files that only outputs filenames,
+        just like the "ls" command.
 
     download-file filename
         Downloads a file from the DFS.

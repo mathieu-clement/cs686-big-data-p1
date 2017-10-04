@@ -51,10 +51,10 @@ public class StorageNode {
             if (chunks.get(filename) == null) {
                 chunks.put(filename, new TreeSet<Chunk>());
             }
-            chunks.get(filename).add(chunk);
         } finally {
             lock.unlock();
         }
+        chunks.get(filename).add(chunk);
     }
 
     private Map<String, SortedSet<Chunk>> readChunks() throws IOException {
@@ -121,11 +121,13 @@ public class StorageNode {
      */
     private static String getHostname()
             throws UnknownHostException {
-        return InetAddress.getLocalHost().getHostName();
+        return InetAddress.getLocalHost().getHostName()
+                ;
     }
 
     public void start()
             throws Exception {
+        Lock chunksLock = new ReentrantLock();
         new Thread(new HeartbeatRunnable(new ComponentAddress(getHostname(), port), controllerAddr, chunks)).start();
 
         srvSocket = new ServerSocket(port);
@@ -133,7 +135,7 @@ public class StorageNode {
         while (true) {
             Socket socket = srvSocket.accept();
             logger.trace("New connection from " + socket.getRemoteSocketAddress());
-            new Thread(new MessageProcessor(socket, chunks)).start();
+            new Thread(new MessageProcessor(socket, chunks, chunksLock)).start();
         }
     }
 

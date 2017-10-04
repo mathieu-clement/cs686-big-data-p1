@@ -202,6 +202,7 @@ public class Client {
         SortedSet<Chunk> chunks = new TreeSet<>();
 
         try {
+            logger.debug("Waiting for all " + tasks.size() + " download tasks to finish...");
             List<Future<Chunk>> futures = executor.invokeAll(tasks);
 
             for (int sequenceNo : chunkLocations.keySet()) {
@@ -327,7 +328,7 @@ public class Client {
             logger.debug("Connecting to storage node " + storageNodeAddr);
             Socket socket = storageNodeAddr.getSocket();
 
-            logger.debug("Sending file '" + chunk.getFilename() + "' to storage node " + storageNodeAddr);
+            logger.debug("Sending chunk '" + chunk + "' to storage node " + storageNodeAddr);
             // Read chunk data from disk
             File chunkFile = chunk.getChunkLocalPath().toFile();
             FileInputStream fis = new FileInputStream(chunkFile);

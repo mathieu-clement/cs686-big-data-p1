@@ -21,7 +21,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.SortedSet;
 import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 import static edu.usfca.cs.dfs.Utils.checkSum;
 
@@ -30,13 +29,14 @@ class MessageProcessor implements Runnable {
     private final static Logger logger = LoggerFactory.getLogger(MessageProcessor.class);
     private final Socket socket;
     private final Map<String, SortedSet<Chunk>> chunks;
-    private final Lock chunksLock = new ReentrantLock();
     private final Map<ComponentAddress, Socket> storageNodeSockets = new HashMap<>();
+    private final Lock chunksLock;
 
-    public MessageProcessor(Socket socket, Map<String, SortedSet<Chunk>> chunks) {
+    public MessageProcessor(Socket socket, Map<String, SortedSet<Chunk>> chunks, Lock chunksLock) {
         logger.trace("Starting Message Processor, thread " + Thread.currentThread().getName());
         this.socket = socket;
         this.chunks = chunks;
+        this.chunksLock = chunksLock;
     }
 
     @Override

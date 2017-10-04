@@ -20,6 +20,8 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.SortedSet;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static edu.usfca.cs.dfs.Utils.checkSum;
 
@@ -28,6 +30,7 @@ class MessageProcessor implements Runnable {
     private final static Logger logger = LoggerFactory.getLogger(MessageProcessor.class);
     private final Socket socket;
     private final Map<String, SortedSet<Chunk>> chunks;
+    private final Lock chunksLock = new ReentrantLock();
     private final Map<ComponentAddress, Socket> storageNodeSockets = new HashMap<>();
 
     public MessageProcessor(Socket socket, Map<String, SortedSet<Chunk>> chunks) {
@@ -160,10 +163,7 @@ class MessageProcessor implements Runnable {
         String storageDirectory = DFSProperties.getInstance().getStorageNodeChunksDir();
         File storageDirectoryFile = new File(storageDirectory);
         if (!storageDirectoryFile.exists()) {
-            if (!storageDirectoryFile.mkdir()) {
-                System.err.println("Could not create storage directory.");
-                System.exit(1);
-            }
+            storageDirectoryFile.mkdir();
         }
 
         // Store chunk file
@@ -192,6 +192,6 @@ class MessageProcessor implements Runnable {
 
     private void addToChunkList(String fileName, int sequenceNo, String checksum, Path chunkFilePath) throws IOException {
         Chunk chunk = new Chunk(fileName, sequenceNo, Files.size(chunkFilePath), checksum, chunkFilePath);
-        StorageNode.addToChunks(chunk, chunks);
+        StorageNode.addToChunks(chunk, chunks, chunksLock);
     }
 }

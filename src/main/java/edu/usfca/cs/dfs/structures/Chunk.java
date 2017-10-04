@@ -2,7 +2,10 @@ package edu.usfca.cs.dfs.structures;
 
 import edu.usfca.cs.dfs.DFSProperties;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -148,6 +151,12 @@ public class Chunk implements Comparable<Chunk> {
 
     public void calculateAndSetChecksum() throws IOException {
         this.checksum = md5sum(chunkLocalPath);
+    }
+
+    public boolean isCorrupted() throws IOException {
+        String oldSum = this.checksum;
+        String newSum = md5sum(chunkLocalPath);
+        return !oldSum.equals(newSum);
     }
 
     private static void writeToChunkFile(FileInputStream fis, Path chunkFilePath, long chunkSize) throws IOException {

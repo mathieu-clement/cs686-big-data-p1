@@ -21,6 +21,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -42,16 +44,22 @@ public class StorageNode {
         this.chunks = readChunks();
     }
 
-    public static void addToChunks(Chunk chunk, Map<String, SortedSet<Chunk>> chunks) {
+    public static void addToChunks(Chunk chunk, Map<String, SortedSet<Chunk>> chunks, Lock lock) {
         String filename = chunk.getFilename();
-        if (chunks.get(filename) == null) {
-            chunks.put(filename, new TreeSet<Chunk>());
+        lock.lock();
+        try {
+            if (chunks.get(filename) == null) {
+                chunks.put(filename, new TreeSet<Chunk>());
+            }
+            chunks.get(filename).add(chunk);
+        } finally {
+            lock.unlock();
         }
-        chunks.get(filename).add(chunk);
     }
 
     private Map<String, SortedSet<Chunk>> readChunks() throws IOException {
         Map<String, SortedSet<Chunk>> result = new HashMap<>();
+        Lock lock = new ReentrantLock();
         Path chunksPath = Paths.get(DFSProperties.getInstance().getStorageNodeChunksDir());
         File chunksDirFile = chunksPath.toFile();
         Pattern chunkFileNamePattern = Pattern.compile("(.*?)-chunk([0-9]+)");
@@ -75,14 +83,13 @@ public class StorageNode {
             // Create chunk
             Chunk chunk = new Chunk(originalFileName, sequenceNo, chunkFile.length(), path);
             chunk.calculateAndSetChecksum();
-            String actualChecksum = chunk.getChecksum();
 
             // Check sum
             Path checksumFilePath = Paths.get(path.toString() + ".md5");
             String expectedChecksum = new String(Files.readAllBytes(checksumFilePath)).split(" ")[0];
             Utils.checkSum(chunkFile, expectedChecksum);
 
-            addToChunks(chunk, result);
+            addToChunks(chunk, result, lock);
         }
 
         logger.debug("Chunks at startup: " + result);

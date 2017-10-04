@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.net.ConnectException;
 import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -126,7 +127,7 @@ public class Client {
     }
 
     private static void listStorageNodes(ComponentAddress controllerAddr) throws IOException {
-        List<ComponentAddress> storageNodes = GetStorageNodeListRunnable.fetchStorageNodes(controllerAddr);
+        Set<ComponentAddress> storageNodes = new TreeSet<>(GetStorageNodeListRunnable.fetchStorageNodes(controllerAddr));
         if (storageNodes.isEmpty()) {
             System.out.println("No storage nodes found.");
             return;
@@ -192,10 +193,9 @@ public class Client {
         for (Map.Entry<Integer, List<ComponentAddress>> entry : chunkLocations.entrySet()) {
             int sequenceNo = entry.getKey();
             List<ComponentAddress> nodes = entry.getValue();
-            ComponentAddress randomNode = Utils.chooseNrandomOrMin(1, new HashSet<>(nodes)).iterator().next();
 
             // Download chunk from that random node
-            DownloadChunkTask task = new DownloadChunkTask(filename, sequenceNo, randomNode, sockets);
+            DownloadChunkTask task = new DownloadChunkTask(filename, sequenceNo, nodes, sockets);
             futures.add(executor.submit(task));
         }
 
@@ -407,29 +407,24 @@ public class Client {
 
         private final String filename;
         private final int sequenceNo;
-        private final ComponentAddress storageNode;
-        private final Map<ThreadStorageNodeKey, Socket> sockets;
+        private final List<ComponentAddress> storageNodes;
 
-        public DownloadChunkTask(String filename, int sequenceNo, ComponentAddress storageNode, Map<ThreadStorageNodeKey, Socket> sockets) throws IOException {
+        public DownloadChunkTask(String filename, int sequenceNo, List<ComponentAddress> storageNodes, Map<ThreadStorageNodeKey, Socket> sockets) throws IOException {
             this.filename = filename;
             this.sequenceNo = sequenceNo;
-            this.storageNode = storageNode;
-            this.sockets = sockets;
+            this.storageNodes = storageNodes;
         }
 
         @Override
         public Chunk call() throws Exception {
-            /*
-            long threadId = Thread.currentThread().getId();
-            ThreadStorageNodeKey key = new ThreadStorageNodeKey(threadId, storageNode);
-            if (sockets.get(key) == null) {
-                sockets.put(key, storageNode.getSocket());
+            for (ComponentAddress storageNode : storageNodes) {
+                try {
+                    return downloadChunk(filename, sequenceNo, storageNode.getSocket());
+                } catch (ConnectException ce) {
+                    // Just try the next node
+                }
             }
-            Socket socket = sockets.get(key);
-            */
-            Socket socket = storageNode.getSocket();
-
-            return downloadChunk(filename, sequenceNo, socket);
+            throw new ConnectException("Couldn't connect to any of: " + storageNodes);
         }
     }
 

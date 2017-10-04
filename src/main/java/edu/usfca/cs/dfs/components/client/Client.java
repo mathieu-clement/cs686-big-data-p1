@@ -195,6 +195,7 @@ public class Client {
             List<ComponentAddress> nodes = entry.getValue();
 
             DownloadChunkTask task = new DownloadChunkTask(filename, sequenceNo, nodes, sockets);
+            tasks.add(task);
             executor.submit(task);
         }
 

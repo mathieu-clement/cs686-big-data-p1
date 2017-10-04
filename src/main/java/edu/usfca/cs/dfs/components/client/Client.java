@@ -187,21 +187,22 @@ public class Client {
         // Each Thread gets its own socket
         // Key is thread ID + storage node
         Map<ThreadStorageNodeKey, Socket> sockets = new HashMap<>();
+        List<DownloadChunkTask> tasks = new ArrayList<>();
 
-        List<Future<Chunk>> futures = new ArrayList<>();
         Map<Integer, List<ComponentAddress>> chunkLocations = parseChunkLocations(downloadFileResponseMsg);
         for (Map.Entry<Integer, List<ComponentAddress>> entry : chunkLocations.entrySet()) {
             int sequenceNo = entry.getKey();
             List<ComponentAddress> nodes = entry.getValue();
 
-            // Download chunk from that random node
             DownloadChunkTask task = new DownloadChunkTask(filename, sequenceNo, nodes, sockets);
-            futures.add(executor.submit(task));
+            executor.submit(task);
         }
 
         SortedSet<Chunk> chunks = new TreeSet<>();
 
         try {
+            List<Future<Chunk>> futures = executor.invokeAll(tasks);
+
             for (int sequenceNo : chunkLocations.keySet()) {
                 chunks.add(futures.get(sequenceNo).get());
             }

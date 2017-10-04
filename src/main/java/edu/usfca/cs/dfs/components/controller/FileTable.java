@@ -20,7 +20,7 @@ public class FileTable {
      *
      * @return names of the files in the system
      */
-    public SortedSet<String> getFilenames() {
+    public synchronized SortedSet<String> getFilenames() {
         return new TreeSet<>(files.keySet());
     }
 
@@ -30,7 +30,7 @@ public class FileTable {
      * @param filename Filename
      * @return file
      */
-    public DFSFile getFile(String filename) {
+    public synchronized DFSFile getFile(String filename) {
         return files.get(filename);
     }
 
@@ -38,7 +38,7 @@ public class FileTable {
      * Returns list of chunks that need to be replicated
      * @return list of chunks that need to be replicated
      */
-    public List<ChunkRef> getUnderReplicatedChunks() {
+    public synchronized List<ChunkRef> getUnderReplicatedChunks() {
         List<ChunkRef> chunks = new ArrayList<>();
         int minReplicas = DFSProperties.getInstance().getMinReplicas();
         for (DFSFile file : files.values()) {
@@ -56,7 +56,7 @@ public class FileTable {
      * a chunk altogether, and even a file altogether.
      * @param storageNode storage node now offline
      */
-    public void onStorageNodeOffline(ComponentAddress storageNode) {
+    public synchronized void onStorageNodeOffline(ComponentAddress storageNode) {
         // Chunks that are modified and that we need to remove later in case
         // there are no more replicas left
         List<ChunkRef> modifiedChunks = new ArrayList<>();
@@ -100,9 +100,9 @@ public class FileTable {
      * @param sequenceNo  chunk sequence number
      * @param storageNode storage node that has that chunk
      */
-    public void publishChunk(String filename,
-                             int sequenceNo,
-                             ComponentAddress storageNode) {
+    public synchronized void publishChunk(String filename,
+                                          int sequenceNo,
+                                          ComponentAddress storageNode) {
         if (!files.containsKey(filename)) {
             files.put(filename, new DFSFile(filename));
         }

@@ -80,7 +80,7 @@ class MessageProcessor implements Runnable {
         String storageNodeHost = msg.getStorageNode().getHost();
         int storageNodePort = msg.getStorageNode().getPort();
         ComponentAddress storageNode = new ComponentAddress(storageNodeHost, storageNodePort);
-
+        logger.warn("Received notice of corrupted file " + filename + " chunk #" + sequenceNo + " on " + storageNode);
         fileTable.onChunkCorrupted(filename, sequenceNo, storageNode);
     }
 

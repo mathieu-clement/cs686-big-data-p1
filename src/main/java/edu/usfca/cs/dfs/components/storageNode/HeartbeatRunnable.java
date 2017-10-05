@@ -10,20 +10,23 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.*;
+import java.util.concurrent.locks.Lock;
 
 class HeartbeatRunnable implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(HeartbeatRunnable.class);
     private final ComponentAddress storageNodeAddr;
     private final ComponentAddress controllerAddr;
     private final Map<String, SortedSet<Chunk>> chunks;
+    private final Lock chunksLock;
 
     public HeartbeatRunnable(
             ComponentAddress storageNodeAddr,
             ComponentAddress controllerAddr,
-            Map<String, SortedSet<Chunk>> chunks) {
+            Map<String, SortedSet<Chunk>> chunks, Lock chunksLock) {
         this.storageNodeAddr = storageNodeAddr;
         this.controllerAddr = controllerAddr;
         this.chunks = chunks;
+        this.chunksLock = chunksLock;
     }
 
     @Override
@@ -67,19 +70,24 @@ class HeartbeatRunnable implements Runnable {
 
     private Collection<Messages.FileChunks> getFileChunks() {
         Set<Messages.FileChunks> result = new HashSet<>();
-        for (Map.Entry<String, SortedSet<Chunk>> entry : chunks.entrySet()) {
-            String filename = entry.getKey();
-            ArrayList<Integer> sequenceNos = new ArrayList<>(entry.getValue().size());
+        chunksLock.lock();
+        try {
+            for (Map.Entry<String, SortedSet<Chunk>> entry : chunks.entrySet()) {
+                String filename = entry.getKey();
+                ArrayList<Integer> sequenceNos = new ArrayList<>(entry.getValue().size());
 
-            for (Chunk chunk : entry.getValue()) {
-                sequenceNos.add(chunk.getSequenceNo());
+                for (Chunk chunk : entry.getValue()) {
+                    sequenceNos.add(chunk.getSequenceNo());
+                }
+
+                Messages.FileChunks fileChunksMsg = Messages.FileChunks.newBuilder()
+                        .setFilename(filename)
+                        .addAllSequenceNos(sequenceNos)
+                        .build();
+                result.add(fileChunksMsg);
             }
-
-            Messages.FileChunks fileChunksMsg = Messages.FileChunks.newBuilder()
-                    .setFilename(filename)
-                    .addAllSequenceNos(sequenceNos)
-                    .build();
-            result.add(fileChunksMsg);
+        } finally {
+            chunksLock.unlock();
         }
         return result;
     }

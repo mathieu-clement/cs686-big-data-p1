@@ -50,11 +50,14 @@ public class StorageNode {
         try {
             if (chunks.get(filename) == null) {
                 chunks.put(filename, new TreeSet<Chunk>());
+                logger.debug("Thread " + Thread.currentThread().getName() + " didn't see an entry for file name '" + filename + "'.");
             }
+
+            logger.debug("Taking note of chunk " + chunk);
+            chunks.get(filename).add(chunk);
         } finally {
             lock.unlock();
         }
-        chunks.get(filename).add(chunk);
     }
 
     private Map<String, SortedSet<Chunk>> readChunks() throws IOException {
@@ -128,7 +131,7 @@ public class StorageNode {
     public void start()
             throws Exception {
         Lock chunksLock = new ReentrantLock();
-        new Thread(new HeartbeatRunnable(new ComponentAddress(getHostname(), port), controllerAddr, chunks)).start();
+        new Thread(new HeartbeatRunnable(new ComponentAddress(getHostname(), port), controllerAddr, chunks, chunksLock)).start();
 
         srvSocket = new ServerSocket(port);
         logger.debug("Listening on port " + port + "...");

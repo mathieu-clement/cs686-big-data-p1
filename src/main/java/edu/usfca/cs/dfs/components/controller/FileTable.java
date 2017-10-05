@@ -61,10 +61,6 @@ public class FileTable {
         // there are no more replicas left
         List<ChunkRef> modifiedChunks = new ArrayList<>();
 
-        // Files that are modified and that we need to remove later in case
-        // there are no chunks left
-        List<DFSFile> modifiedFiles = new ArrayList<>();
-
         for (DFSFile file : files.values()) {
             for (ChunkRef chunk : file.getChunks()) {
                 Set<ComponentAddress> locations = chunk.getReplicaLocations();
@@ -74,6 +70,14 @@ public class FileTable {
                 }
             }
         }
+
+        cleanup(modifiedChunks);
+    }
+
+    private void cleanup(List<ChunkRef> modifiedChunks) {
+        // Files that are modified and that we need to remove later in case
+        // there are no chunks left
+        List<DFSFile> modifiedFiles = new ArrayList<>();
 
         // Remove chunks that have no replicas
         for (ChunkRef chunk : modifiedChunks) {
@@ -115,5 +119,20 @@ public class FileTable {
         if (!replicaLocations.contains(storageNode)) {
             replicaLocations.add(storageNode);
         }
+    }
+
+    /**
+     * Announce to file table that a storage node detected a corrupt chunk
+     *
+     * @param filename    Original filename this chunk has been created from
+     * @param sequenceNo  Chunk sequence number
+     * @param storageNode Storage node that has a broken chunk
+     */
+    public void onChunkCorrupted(String filename, int sequenceNo, ComponentAddress storageNode) {
+        if (!files.containsKey(filename)) return;
+
+        ChunkRef chunk = files.get(filename).getChunk(sequenceNo);
+        chunk.getReplicaLocations().remove(storageNode);
+        cleanup(Collections.singletonList(chunk));
     }
 }

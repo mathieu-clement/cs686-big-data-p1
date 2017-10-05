@@ -87,7 +87,7 @@ class MessageProcessor implements Runnable {
     }
 
     private void processGetFreeSpaceRequestMsg(Socket socket) throws IOException {
-        Messages.MessageWrapper.newBuilder()
+        Messages.MessageWrapper msg = Messages.MessageWrapper.newBuilder()
                 .setGetFreeSpaceResponseMsg(
                         Messages.GetFreeSpaceResponse.newBuilder()
                                 .setFreeSpace(new File(DFSProperties.getInstance()
@@ -95,8 +95,8 @@ class MessageProcessor implements Runnable {
                                 )
                                 .build()
                 )
-                .build()
-                .writeDelimitedTo(socket.getOutputStream());
+                .build();
+        msg.writeDelimitedTo(socket.getOutputStream());
     }
 
     private void processDownloadChunkMsg(Socket socket, Messages.MessageWrapper messageWrapper) throws IOException {

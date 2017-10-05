@@ -62,12 +62,26 @@ class MessageProcessor implements Runnable {
                 } else if (msgWrapper.hasGetFreeSpaceRequestMsg()) {
                     logger.trace("Incoming get free space message");
                     processGetFreeSpaceRequestMsg(socket);
+                } else if (msgWrapper.hasChunkCorruptedMsg()) {
+                    logger.trace("Incoming chunk corrupted message");
+                    processChunkCorruptedMsg(msgWrapper);
                 }
             } catch (IOException e) {
                 logger.error("Error reading from socket", e);
             }
         }
         removeMessageQueue();
+    }
+
+    private void processChunkCorruptedMsg(Messages.MessageWrapper msgWrapper) {
+        Messages.ChunkCorrupted msg = msgWrapper.getChunkCorruptedMsg();
+        String filename = msg.getFilename();
+        int sequenceNo = msg.getSequenceNo();
+        String storageNodeHost = msg.getStorageNode().getHost();
+        int storageNodePort = msg.getStorageNode().getPort();
+        ComponentAddress storageNode = new ComponentAddress(storageNodeHost, storageNodePort);
+
+        fileTable.onChunkCorrupted(filename, sequenceNo, storageNode);
     }
 
     private void processGetFreeSpaceRequestMsg(Socket socket) throws IOException {

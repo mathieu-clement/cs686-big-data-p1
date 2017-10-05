@@ -130,8 +130,10 @@ public class StorageNode {
     private void start()
             throws Exception {
         Lock chunksLock = new ReentrantLock();
-        new Thread(new HeartbeatRunnable(new ComponentAddress(getHostname(), port), controllerAddr, chunks, chunksLock)).start();
-        new Thread(new ChunkCorruptionMonitor(chunks, chunksLock)).start();
+        ComponentAddress myAddr = new ComponentAddress(getHostname(), port);
+        new Thread(new HeartbeatRunnable(myAddr, controllerAddr, chunks, chunksLock)).start();
+
+        new Thread(new ChunkCorruptionMonitor(myAddr, chunks, chunksLock, controllerAddr)).start();
 
         srvSocket = new ServerSocket(port);
         logger.debug("Listening on port " + port + "...");
@@ -139,6 +141,7 @@ public class StorageNode {
             Socket socket = srvSocket.accept();
             logger.trace("New connection from " + socket.getRemoteSocketAddress());
             new Thread(new MessageProcessor(socket, chunks, chunksLock)).start();
+
         }
     }
 

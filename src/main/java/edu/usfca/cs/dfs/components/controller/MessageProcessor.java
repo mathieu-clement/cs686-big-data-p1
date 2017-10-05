@@ -37,10 +37,10 @@ class MessageProcessor implements Runnable {
                 Messages.MessageWrapper msgWrapper = Messages.MessageWrapper.parseDelimitedFrom(socket.getInputStream());
 
                 if (msgWrapper == null) {
-                    logger.trace("Incoming null message");
+                    logger.trace("Incoming null message from " + socket.getRemoteSocketAddress());
                     nullMessageCount++;
                     if (nullMessageCount == 50) {
-                        logger.error("Too many null messages in a row. Closing socket.");
+                        logger.error("Too many null messages in a row from " + socket.getRemoteSocketAddress() + ". Closing socket.");
                         socket.close();
                         return;
                     } else {

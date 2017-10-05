@@ -124,14 +124,14 @@ public class StorageNode {
      */
     private static String getHostname()
             throws UnknownHostException {
-        return InetAddress.getLocalHost().getHostName()
-                ;
+        return InetAddress.getLocalHost().getHostName();
     }
 
-    public void start()
+    private void start()
             throws Exception {
         Lock chunksLock = new ReentrantLock();
         new Thread(new HeartbeatRunnable(new ComponentAddress(getHostname(), port), controllerAddr, chunks, chunksLock)).start();
+        new Thread(new ChunkCorruptionMonitor(chunks, chunksLock)).start();
 
         srvSocket = new ServerSocket(port);
         logger.debug("Listening on port " + port + "...");

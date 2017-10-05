@@ -153,10 +153,14 @@ public class Chunk implements Comparable<Chunk> {
         this.checksum = md5sum(chunkLocalPath);
     }
 
-    public boolean isCorrupted() throws IOException {
+    public boolean isCorrupted() {
         String oldSum = this.checksum;
-        String newSum = md5sum(chunkLocalPath);
-        return !oldSum.equals(newSum);
+        try {
+            String newSum = md5sum(chunkLocalPath);
+            return !oldSum.equals(newSum);
+        } catch (IOException ioe) {
+            throw new RuntimeException(ioe);
+        }
     }
 
     private static void writeToChunkFile(FileInputStream fis, Path chunkFilePath, long chunkSize) throws IOException {

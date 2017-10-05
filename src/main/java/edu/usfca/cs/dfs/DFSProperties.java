@@ -67,6 +67,10 @@ public class DFSProperties {
         return parseInt(getProperty("max-heartbeat-age"));
     }
 
+    public int getCorruptionVerificationPeriod() {
+        return parseInt(getProperty("corruption-verification-period"));
+    }
+
     private String getProperty(String name) {
         return System.getProperty(name, properties.getProperty(name));
     }

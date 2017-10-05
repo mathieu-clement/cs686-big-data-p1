@@ -30,7 +30,6 @@ public class HeartbeatMonitor implements Runnable {
                 // Can't remove items from list while iterating over it
                 List<ComponentAddress> toRemove = new ArrayList<>();
 
-
                 for (Map.Entry<ComponentAddress, Date> entry : heartbeats.entrySet()) {
                     Date lastHeartbeat = entry.getValue();
                     Date now = new Date();
@@ -45,10 +44,10 @@ public class HeartbeatMonitor implements Runnable {
                         fileTable.onStorageNodeOffline(storageNode);
                         toRemove.add(storageNode);
                     }
+                }
 
-                    for (ComponentAddress storageNode : toRemove) {
-                        heartbeats.remove(storageNode);
-                    }
+                for (ComponentAddress storageNode : toRemove) {
+                    heartbeats.remove(storageNode);
                 }
 
                 Thread.sleep(heartbeatCheckPeriod);

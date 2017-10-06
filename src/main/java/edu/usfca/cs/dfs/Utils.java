@@ -63,7 +63,7 @@ public class Utils {
         inputFileWriter.close();
     }
 
-    public static void checkSum(File file, String expectedChecksum) throws IOException {
+    public static void checkSum(File file, String expectedChecksum) throws IOException, ChecksumException {
         String actualChecksum = Utils.md5sum(file);
         if (!actualChecksum.equals(expectedChecksum)) {
             throw new ChecksumException(file, expectedChecksum, actualChecksum);

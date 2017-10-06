@@ -4,6 +4,7 @@ import com.google.protobuf.ByteString;
 import com.google.protobuf.TextFormat;
 import edu.usfca.cs.dfs.DFSProperties;
 import edu.usfca.cs.dfs.Utils;
+import edu.usfca.cs.dfs.exceptions.ChecksumException;
 import edu.usfca.cs.dfs.messages.Messages;
 import edu.usfca.cs.dfs.structures.Chunk;
 import edu.usfca.cs.dfs.structures.ComponentAddress;
@@ -423,11 +424,11 @@ public class Client {
             for (ComponentAddress storageNode : storageNodes) {
                 try {
                     return downloadChunk(filename, sequenceNo, storageNode.getSocket());
-                } catch (ConnectException ce) {
+                } catch (ConnectException | ChecksumException ce) {
                     // Just try the next node
                 }
             }
-            throw new ConnectException("Couldn't connect to any of: " + storageNodes);
+            throw new ConnectException("Couldn't retrieve one good chunk (correct checksum) or connect to any of: " + storageNodes);
         }
     }
 

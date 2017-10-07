@@ -26,9 +26,6 @@ public class Client {
 
     private static final Logger logger = LoggerFactory.getLogger(Client.class);
 
-    // TODO Do without
-    private static Semaphore storageNodeAddressesAvailableSema = new Semaphore(0);
-
     public static void main(String[] args) throws Exception {
 
         if (args.length < 3) {
@@ -56,7 +53,7 @@ public class Client {
                 break;
 
             case "upload-file":
-                sendFile(controllerAddr, args[3]);
+                sendFile(args[3], controllerAddr);
                 break;
 
             case "download-file":
@@ -129,7 +126,7 @@ public class Client {
     }
 
     private static void listStorageNodes(ComponentAddress controllerAddr) throws IOException {
-        Set<ComponentAddress> storageNodes = new TreeSet<>(GetStorageNodeListRunnable.fetchStorageNodes(controllerAddr));
+        Set<ComponentAddress> storageNodes = new TreeSet<>(fetchStorageNodes(controllerAddr));
         if (storageNodes.isEmpty()) {
             System.out.println("No storage nodes found.");
             return;
@@ -251,6 +248,26 @@ public class Client {
         return processStoreChunkMsg(msgWrapper);
     }
 
+    public static List<ComponentAddress> fetchStorageNodes(ComponentAddress controllerAddr) throws IOException {
+        Socket socket = controllerAddr.getSocket();
+        Messages.GetStorageNodesRequest storageNodesRequestMsg = Messages.GetStorageNodesRequest.newBuilder().build();
+        Messages.MessageWrapper sentMsgWrapper = Messages.MessageWrapper.newBuilder()
+                .setGetStoragesNodesRequestMsg(storageNodesRequestMsg)
+                .build();
+
+        logger.debug("Asking for list of storage nodes...");
+        sentMsgWrapper.writeDelimitedTo(socket.getOutputStream());
+
+        logger.debug("Waiting for list of storage nodes...");
+        Messages.MessageWrapper receivedMsgWrapper = Messages.MessageWrapper.parseDelimitedFrom(socket.getInputStream());
+        if (!receivedMsgWrapper.hasGetStorageNodesResponseMsg()) {
+            throw new UnsupportedOperationException("Expected storage node list response, but got something else.");
+        }
+        Messages.GetStorageNodesResponse responseMsg = receivedMsgWrapper.getGetStorageNodesResponseMsg();
+
+        return toComponentAddresses(responseMsg.getNodesList());
+    }
+
     private static class ThreadStorageNodeKey {
         private final long threadId;
         private final ComponentAddress storageNode;
@@ -309,9 +326,9 @@ public class Client {
         return new Chunk(storeChunkMsg.getFileName(), storeChunkMsg.getSequenceNo(), Files.size(chunkFilePath), storeChunkMsg.getChecksum(), chunkFilePath);
     }
 
-    private static void sendChunkedSampleFile(String filename, GetStorageNodeListRunnable storageNodeListRunnable) throws IOException, InterruptedException {
+    private static void sendFile(String filename, ComponentAddress controllerAddr) throws IOException, InterruptedException {
 
-        List<ComponentAddress> storageNodeAddresses = fetchStorageNodes(storageNodeListRunnable);
+        List<ComponentAddress> storageNodeAddresses = fetchStorageNodes(controllerAddr);
 
         int storageNodeIndex = random.nextInt(storageNodeAddresses.size());
         int nbStorageNodes = storageNodeAddresses.size();
@@ -361,19 +378,6 @@ public class Client {
         }
     }
 
-    private static List<ComponentAddress> fetchStorageNodes(GetStorageNodeListRunnable storageNodeListRunnable) throws InterruptedException {
-        List<ComponentAddress> storageNodeAddresses;
-
-        try {
-            while ((storageNodeAddresses = storageNodeListRunnable.getStorageNodeAddresses()) == null) {
-                storageNodeAddressesAvailableSema.acquire();
-            }
-        } finally {
-            storageNodeAddressesAvailableSema.release();
-        }
-        return storageNodeAddresses;
-    }
-
     private static Map<Integer, List<ComponentAddress>> parseChunkLocations(Messages.DownloadFileResponse downloadFileResponseMsg) {
         Map<Integer, List<ComponentAddress>> result = new HashMap<>();
         for (Messages.DownloadFileResponse.ChunkLocation chunkLocation : downloadFileResponseMsg.getChunkLocationsList()) {
@@ -385,12 +389,6 @@ public class Client {
             result.put(chunkLocation.getSequenceNo(), nodes);
         }
         return result;
-    }
-
-    private static void sendFile(ComponentAddress controllerAddr, String filename) throws IOException, InterruptedException {
-        GetStorageNodeListRunnable storageNodeListRunnable = new GetStorageNodeListRunnable(controllerAddr, storageNodeAddressesAvailableSema);
-        new Thread(storageNodeListRunnable).start();
-        sendChunkedSampleFile(filename, storageNodeListRunnable);
     }
 
     private static void printHelp() throws IOException {

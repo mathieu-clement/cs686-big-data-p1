@@ -137,7 +137,7 @@ class MessageProcessor implements Runnable {
         // send a store chunk message
         FileInputStream fis = new FileInputStream(chunkFile);
         String expectedChecksum = new String(Files.readAllBytes(Paths.get(DFSProperties.getInstance().getStorageNodeChunksDir(), chunkFileName + ".md5"))).split(" ")[0];
-        Utils.checkSum(chunkFile, expectedChecksum); // TODO Tell controller if we messed up
+        Utils.checkSum(chunkFile, expectedChecksum);
 
         Messages.MessageWrapper msg = Messages.MessageWrapper.newBuilder()
                 .setStoreChunkMsg(

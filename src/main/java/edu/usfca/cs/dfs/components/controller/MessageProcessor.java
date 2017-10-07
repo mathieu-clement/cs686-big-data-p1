@@ -50,7 +50,7 @@ class MessageProcessor implements Runnable {
                 }
 
                 if (msgWrapper.hasHeartbeatMsg()) {
-                    processHeartbeatMsg(msgWrapper);
+                    processHeartbeatMsg(socket, msgWrapper);
                 } else if (msgWrapper.hasGetStoragesNodesRequestMsg()) {
                     logger.trace("Incoming get storage nodes request message");
                     processGetStorageNodesRequestMsg(socket);
@@ -268,7 +268,7 @@ class MessageProcessor implements Runnable {
         responseMsgWrapper.writeDelimitedTo(socket.getOutputStream());
     }
 
-    private void processHeartbeatMsg(Messages.MessageWrapper msgWrapper) throws IOException {
+    private void processHeartbeatMsg(Socket socket, Messages.MessageWrapper msgWrapper) throws IOException {
         Messages.Heartbeat msg = msgWrapper.getHeartbeatMsg();
         ComponentAddress storageNodeAddress = new ComponentAddress(
                 msg.getStorageNodeHost(),
@@ -288,6 +288,12 @@ class MessageProcessor implements Runnable {
             Map<String, SortedSet<Integer>> fileChunks = processFileChunksFromStorageNode(msg.getFileChunksList(), storageNode);
             logger.debug("Received heartbeat from " + storageNodeAddress + " with file chunks: " + fileChunks);
         }
+
+        logger.trace("Sending back hearbeat acknowledgement");
+        Messages.MessageWrapper.newBuilder()
+                .setHeartbeatAckMsg(Messages.HeartbeatAck.newBuilder().build())
+                .build()
+                .writeDelimitedTo(socket.getOutputStream());
     }
 
     private boolean isFirstHearbeat(ComponentAddress storageNode) {
@@ -295,7 +301,7 @@ class MessageProcessor implements Runnable {
     }
 
     private void onFirstHeartbeat(ComponentAddress storageNode) throws IOException {
-        logger.debug("Received first heartbeat from " + storageNode + " since startup");
+        logger.debug("Received first heartbeat from " + storageNode + " on this connection");
         knownStorageNodes.add(storageNode);
 
         // Never seen before, so we need the COMPLETE list of files, not just the new ones

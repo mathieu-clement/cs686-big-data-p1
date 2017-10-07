@@ -79,7 +79,7 @@ class HeartbeatRunnable implements Runnable {
         }
     }
 
-    static Set<Messages.FileChunks> toFileChunksMessages(Map<String, SortedSet<Chunk>> newChunks) {
+    static Set<Messages.FileChunks> toFileChunksMessages(final Map<String, SortedSet<Chunk>> newChunks) {
         Set<Messages.FileChunks> result = new LinkedHashSet<>();
         for (Map.Entry<String, SortedSet<Chunk>> entry : newChunks.entrySet()) {
             String filename = entry.getKey();
@@ -113,14 +113,14 @@ class HeartbeatRunnable implements Runnable {
     // but not by cloning the chunks themselves
     private Map<String, SortedSet<Chunk>> cloneChunkMap() {
         Map<String, SortedSet<Chunk>> copy = new HashMap<>();
-        for (Map.Entry<String, SortedSet<Chunk>> entry : lastChunks.entrySet()) {
-            copy.put(entry.getKey(), new TreeSet<Chunk>(entry.getValue()));
+        for (Map.Entry<String, SortedSet<Chunk>> entry : chunks.entrySet()) {
+            copy.put(entry.getKey(), new TreeSet<>(entry.getValue()));
         }
         return copy;
     }
 
     // Return a map of chunks, with only the stuff that is new
-    private Map<String, SortedSet<Chunk>> getDiff(Map<String, SortedSet<Chunk>> oldChunkMap, Map<String, SortedSet<Chunk>> newChunkMap) {
+    private Map<String, SortedSet<Chunk>> getDiff(final Map<String, SortedSet<Chunk>> oldChunkMap, final Map<String, SortedSet<Chunk>> newChunkMap) {
         Map<String, SortedSet<Chunk>> diff = new HashMap<>();
         for (Map.Entry<String, SortedSet<Chunk>> entry : newChunkMap.entrySet()) {
             if (!oldChunkMap.containsKey(entry.getKey())) {
@@ -133,7 +133,7 @@ class HeartbeatRunnable implements Runnable {
                         newChunks.add(chunk);
                     }
                 }
-                newChunkMap.put(entry.getKey(), newChunks);
+                diff.put(entry.getKey(), newChunks);
             }
         }
         return diff;

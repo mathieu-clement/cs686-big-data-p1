@@ -78,8 +78,8 @@ class MessageProcessor implements Runnable {
                     logger.trace("Incoming get free space request message");
                     processGetFreeSpaceRequestMsg(socket);
                 } else if (msg.hasGetStorageNodeFilesRequest()) {
-                    logger.trace("Incoming get storage node files request message");
-                    processGetFilesRequestMsg(socket);
+                    logger.debug("Incoming get storage node files request message");
+                    processGetStorageNodeFilesRequestMsg(socket);
                 }
             } catch (IOException e) {
                 logger.error("Error while parsing message or other IO error", e);
@@ -92,7 +92,7 @@ class MessageProcessor implements Runnable {
         }
     }
 
-    private void processGetFilesRequestMsg(Socket socket) throws IOException {
+    private void processGetStorageNodeFilesRequestMsg(Socket socket) throws IOException {
         Set<Messages.FileChunks> fileChunks;
 
         chunksLock.lock();

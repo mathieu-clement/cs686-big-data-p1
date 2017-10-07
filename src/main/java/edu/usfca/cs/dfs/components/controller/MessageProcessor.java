@@ -19,6 +19,7 @@ class MessageProcessor implements Runnable {
     private StorageNodeAddressService storageNodeAddressService;
     private final FileTable fileTable;
     private final Socket socket;
+    private final Set<ComponentAddress> knownStorageNodes = new HashSet<>();
 
     public MessageProcessor(StorageNodeAddressService storageNodeAddressService, Set<ComponentAddress> onlineStorageNodes, Map<ComponentAddress, Date> heartbeats, Map<ComponentAddress, MessageFifoQueue> messageQueues, FileTable fileTable, Socket socket) {
         this.storageNodeAddressService = storageNodeAddressService;
@@ -267,21 +268,64 @@ class MessageProcessor implements Runnable {
         responseMsgWrapper.writeDelimitedTo(socket.getOutputStream());
     }
 
-    private void send(Messages.MessageWrapper msg) {
-        messageQueues.get(storageNodeAddressService.getStorageNodeAddress()).queue(msg);
-    }
-
-    private void processHeartbeatMsg(Messages.MessageWrapper msgWrapper) {
+    private void processHeartbeatMsg(Messages.MessageWrapper msgWrapper) throws IOException {
         Messages.Heartbeat msg = msgWrapper.getHeartbeatMsg();
         ComponentAddress storageNodeAddress = new ComponentAddress(
                 msg.getStorageNodeHost(),
                 msg.getStorageNodePort());
         ComponentAddress storageNode = new ComponentAddress(msg.getStorageNodeHost(), msg.getStorageNodePort());
 
-        // Remember that we have seen this heartbeat, to detect missing hearbeats later.
+        // Remember that we have seen this heartbeat, to detect missing heartbeats later.
         heartbeats.put(storageNode, new Date());
 
-        Map<String, SortedSet<Integer>> fileChunks = toFileChunksMap(msg.getFileChunksList());
+        this.storageNodeAddressService.setStorageNodeAddress(storageNodeAddress);
+        onlineStorageNodes.add(storageNodeAddress);
+        createMessageQueueIfNotExists(storageNodeAddress);
+
+        if (isFirstHearbeat(storageNode)) {
+            onFirstHeartbeat(storageNode);
+        } else {
+            Map<String, SortedSet<Integer>> fileChunks = processFileChunksFromStorageNode(msg.getFileChunksList(), storageNode);
+            logger.debug("Received heartbeat from " + storageNodeAddress + " with file chunks: " + fileChunks);
+        }
+    }
+
+    private boolean isFirstHearbeat(ComponentAddress storageNode) {
+        return !knownStorageNodes.contains(storageNode);
+    }
+
+    private void onFirstHeartbeat(ComponentAddress storageNode) throws IOException {
+        logger.debug("Received first heartbeat from " + storageNode + " since startup");
+        knownStorageNodes.add(storageNode);
+
+        // Never seen before, so we need the COMPLETE list of files, not just the new ones
+        // since last time
+
+        // Exceptionally we'll open a new socket, but close it immediately afterward.
+        Socket storageNodeSocket = storageNode.getSocket();
+        try {
+            logger.debug("Asking " + storageNode + " for complete list of files");
+            Messages.MessageWrapper.newBuilder()
+                    .setGetStorageNodeFilesRequest(Messages.GetStorageNodeFilesRequest.newBuilder().build())
+                    .build()
+                    .writeDelimitedTo(storageNodeSocket.getOutputStream());
+
+            Messages.MessageWrapper responseMsgWrp = Messages.MessageWrapper.parseDelimitedFrom(storageNodeSocket.getInputStream());
+            if (!responseMsgWrp.hasGetStorageNodeFilesResponse()) {
+                logger.error("Expected Storage Node Files Response from " + storageNode + " but got: " + responseMsgWrp);
+            } else {
+                Map<String, SortedSet<Integer>> fileChunks = processFileChunksFromStorageNode(
+                        responseMsgWrp.getGetStorageNodeFilesResponse().getFilesList(),
+                        storageNode);
+                logger.debug("Got back the complete list of files from " + storageNode + ": " + fileChunks);
+            }
+        } finally {
+            storageNodeSocket.close();
+        }
+    }
+
+    private Map<String, SortedSet<Integer>> processFileChunksFromStorageNode(List<Messages.FileChunks> fileChunksMessages, ComponentAddress storageNode) {
+        Map<String, SortedSet<Integer>> fileChunks = toFileChunksMap(fileChunksMessages);
         for (Map.Entry<String, SortedSet<Integer>> entry : fileChunks.entrySet()) {
             String filename = entry.getKey();
             SortedSet<Integer> sequenceNos = entry.getValue();
@@ -289,11 +333,7 @@ class MessageProcessor implements Runnable {
                 fileTable.publishChunk(filename, sequenceNo, storageNode);
             }
         }
-
-        logger.debug("Received heartbeat from " + storageNodeAddress + " with file chunks: " + fileChunks);
-        this.storageNodeAddressService.setStorageNodeAddress(storageNodeAddress);
-        onlineStorageNodes.add(storageNodeAddress);
-        createMessageQueueIfNotExists(storageNodeAddress);
+        return fileChunks;
     }
 
     private void createMessageQueueIfNotExists(ComponentAddress storageNodeAddress) {

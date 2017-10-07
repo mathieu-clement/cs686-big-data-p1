@@ -93,7 +93,7 @@ class HeartbeatRunnable implements Runnable {
         try {
             Map<String, SortedSet<Chunk>> newChunks = getDiff(lastChunks, chunks);
             Set<Messages.FileChunks> result = toFileChunksMessages(newChunks);
-            lastChunks = cloneChunkMap();
+            lastChunks = cloneChunkMap(); // TODO Only update if HeartbeatAck is received from server
             return result;
         } finally {
             chunksLock.unlock();

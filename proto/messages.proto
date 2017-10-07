@@ -38,6 +38,10 @@ message Heartbeat {
     repeated FileChunks fileChunks = 3;
 }
 
+message HeartbeatAck {
+
+}
+
 message GetStorageNodesRequest {
 
 }
@@ -119,5 +123,6 @@ message MessageWrapper {
         ChunkCorrupted chunkCorruptedMsg = 15;
         GetStorageNodeFilesRequest getStorageNodeFilesRequest = 16;
         GetStorageNodeFilesResponse getStorageNodeFilesResponse = 17;
+        HeartbeatAck heartbeatAckMsg = 18;
     }
 }

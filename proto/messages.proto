@@ -78,6 +78,14 @@ message GetFilesResponse {
     repeated DownloadFileResponse files = 1;
 }
 
+message GetStorageNodeFilesRequest {
+
+}
+
+message GetStorageNodeFilesResponse {
+    repeated FileChunks files = 1;
+}
+
 message GetFreeSpaceRequest {
 
 }
@@ -109,5 +117,7 @@ message MessageWrapper {
         GetFreeSpaceRequest getFreeSpaceRequestMsg = 13;
         GetFreeSpaceResponse getFreeSpaceResponseMsg = 14;
         ChunkCorrupted chunkCorruptedMsg = 15;
+        GetStorageNodeFilesRequest getStorageNodeFilesRequest = 16;
+        GetStorageNodeFilesResponse getStorageNodeFilesResponse = 17;
     }
 }

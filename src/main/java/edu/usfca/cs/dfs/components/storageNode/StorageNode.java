@@ -140,7 +140,7 @@ public class StorageNode {
         while (true) {
             Socket socket = srvSocket.accept();
             logger.trace("New connection from " + socket.getRemoteSocketAddress());
-            new Thread(new MessageProcessor(socket, chunks, chunksLock)).start();
+            new Thread(new MessageProcessor(socket, chunks, chunksLock, myAddr)).start();
 
         }
     }

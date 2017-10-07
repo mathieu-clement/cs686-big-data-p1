@@ -19,6 +19,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.SortedSet;
 import java.util.concurrent.locks.Lock;
 
@@ -29,10 +30,12 @@ class MessageProcessor implements Runnable {
     private final static Logger logger = LoggerFactory.getLogger(MessageProcessor.class);
     private final Socket socket;
     private final Map<String, SortedSet<Chunk>> chunks;
-    private final Map<ComponentAddress, Socket> storageNodeSockets = new HashMap<>();
     private final Lock chunksLock;
+    private final Map<ComponentAddress, Socket> storageNodeSockets = new HashMap<>();
+    private final ComponentAddress storageNode;
 
-    public MessageProcessor(Socket socket, Map<String, SortedSet<Chunk>> chunks, Lock chunksLock) {
+    public MessageProcessor(Socket socket, Map<String, SortedSet<Chunk>> chunks, Lock chunksLock, ComponentAddress storageNode) {
+        this.storageNode = storageNode;
         logger.trace("Starting Message Processor, thread " + Thread.currentThread().getName());
         this.socket = socket;
         this.chunks = chunks;
@@ -74,6 +77,9 @@ class MessageProcessor implements Runnable {
                 } else if (msg.hasGetFreeSpaceRequestMsg()) {
                     logger.trace("Incoming get free space request message");
                     processGetFreeSpaceRequestMsg(socket);
+                } else if (msg.hasGetStorageNodeFilesRequest()) {
+                    logger.trace("Incoming get storage node files request message");
+                    processGetFilesRequestMsg(socket);
                 }
             } catch (IOException e) {
                 logger.error("Error while parsing message or other IO error", e);
@@ -84,6 +90,26 @@ class MessageProcessor implements Runnable {
                 }
             }
         }
+    }
+
+    private void processGetFilesRequestMsg(Socket socket) throws IOException {
+        Set<Messages.FileChunks> fileChunks;
+
+        chunksLock.lock();
+        try {
+            fileChunks = HeartbeatRunnable.toFileChunksMessages(chunks);
+        } finally {
+            chunksLock.unlock();
+        }
+
+        Messages.MessageWrapper.newBuilder()
+                .setGetStorageNodeFilesResponse(
+                        Messages.GetStorageNodeFilesResponse.newBuilder()
+                                .addAllFiles(fileChunks)
+                                .build()
+                )
+                .build()
+                .writeDelimitedTo(socket.getOutputStream());
     }
 
     private void processGetFreeSpaceRequestMsg(Socket socket) throws IOException {

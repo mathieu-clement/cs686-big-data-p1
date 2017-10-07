@@ -69,31 +69,35 @@ class HeartbeatRunnable implements Runnable {
         }
     }
 
+    static Set<Messages.FileChunks> toFileChunksMessages(Map<String, SortedSet<Chunk>> newChunks) {
+        Set<Messages.FileChunks> result = new LinkedHashSet<>();
+        for (Map.Entry<String, SortedSet<Chunk>> entry : newChunks.entrySet()) {
+            String filename = entry.getKey();
+            ArrayList<Integer> sequenceNos = new ArrayList<>(entry.getValue().size());
+
+            for (Chunk chunk : entry.getValue()) {
+                sequenceNos.add(chunk.getSequenceNo());
+            }
+
+            Messages.FileChunks fileChunksMsg = Messages.FileChunks.newBuilder()
+                    .setFilename(filename)
+                    .addAllSequenceNos(sequenceNos)
+                    .build();
+            result.add(fileChunksMsg);
+        }
+        return result;
+    }
+
     private Collection<Messages.FileChunks> getNewFileChunks() {
-        Set<Messages.FileChunks> result = new HashSet<>();
         chunksLock.lock();
         try {
             Map<String, SortedSet<Chunk>> newChunks = getDiff(lastChunks, chunks);
-            for (Map.Entry<String, SortedSet<Chunk>> entry : newChunks.entrySet()) {
-                String filename = entry.getKey();
-                ArrayList<Integer> sequenceNos = new ArrayList<>(entry.getValue().size());
-
-                for (Chunk chunk : entry.getValue()) {
-                    sequenceNos.add(chunk.getSequenceNo());
-                }
-
-                Messages.FileChunks fileChunksMsg = Messages.FileChunks.newBuilder()
-                        .setFilename(filename)
-                        .addAllSequenceNos(sequenceNos)
-                        .build();
-                result.add(fileChunksMsg);
-            }
-
+            Set<Messages.FileChunks> result = toFileChunksMessages(newChunks);
             lastChunks = cloneChunkMap();
+            return result;
         } finally {
             chunksLock.unlock();
         }
-        return result;
     }
 
     // Clones chunks, by having a new copy of:

@@ -26,6 +26,7 @@ public class Client {
 
     private static final Logger logger = LoggerFactory.getLogger(Client.class);
 
+    // TODO Do without
     private static Semaphore storageNodeAddressesAvailableSema = new Semaphore(0);
 
     public static void main(String[] args) throws Exception {

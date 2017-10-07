@@ -52,6 +52,16 @@ class HeartbeatRunnable implements Runnable {
                     logger.debug("Sending heartbeat to controller " + controllerAddr);
                     msgWrapper.writeDelimitedTo(socket.getOutputStream());
 
+                    logger.debug("Waiting for acknowledgment");
+                    Messages.MessageWrapper response = Messages.MessageWrapper.parseDelimitedFrom(socket.getInputStream());
+                    if (response.hasHeartbeatAckMsg()) {
+                        logger.debug("Got it.");
+                        lastChunks = cloneChunkMap();
+                    } else {
+                        logger.error("Unexpected response to heartbeat: " + response);
+                    }
+
+
                     Thread.sleep(heartbeatPeriod);
                 }
             } catch (IOException e) {
@@ -91,10 +101,7 @@ class HeartbeatRunnable implements Runnable {
     private Collection<Messages.FileChunks> getNewFileChunks() {
         chunksLock.lock();
         try {
-            Map<String, SortedSet<Chunk>> newChunks = getDiff(lastChunks, chunks);
-            Set<Messages.FileChunks> result = toFileChunksMessages(newChunks);
-            lastChunks = cloneChunkMap(); // TODO Only update if HeartbeatAck is received from server
-            return result;
+            return toFileChunksMessages(getDiff(lastChunks, chunks));
         } finally {
             chunksLock.unlock();
         }

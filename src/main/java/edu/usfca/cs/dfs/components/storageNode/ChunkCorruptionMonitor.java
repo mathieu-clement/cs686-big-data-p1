@@ -31,29 +31,31 @@ public class ChunkCorruptionMonitor implements Runnable {
     @Override
     public void run() {
         while (true) {
-            for (SortedSet<Chunk> chunks : chunkMap.values()) {
-                List<Chunk> corruptedChunks = new ArrayList<>();
-                for (Chunk chunk : chunks) {
-                    if (chunk.isCorrupted()) {
-                        logger.warn("Chunk " + chunk + " is corrupted.");
-                        corruptedChunks.add(chunk);
+            chunkMapLock.lock();
+            try {
+                for (SortedSet<Chunk> chunks : chunkMap.values()) {
+                    List<Chunk> corruptedChunks = new ArrayList<>();
+                    for (Chunk chunk : chunks) {
+                        if (chunk.isCorrupted()) {
+                            logger.warn("Chunk " + chunk + " is corrupted.");
+                            corruptedChunks.add(chunk);
+                        }
                     }
-                }
-                for (Chunk chunk : corruptedChunks) {
-                    File chunkFile = chunk.getChunkLocalPath().toFile();
-                    File checksumFile = new File(chunkFile.getAbsolutePath() + ".md5");
-                    chunkFile.delete();
-                    checksumFile.delete();
-                    chunkMapLock.lock();
-                    try {
+                    for (Chunk chunk : corruptedChunks) {
+                        File chunkFile = chunk.getChunkLocalPath().toFile();
+                        File checksumFile = new File(chunkFile.getAbsolutePath() + ".md5");
+                        chunkFile.delete();
+                        checksumFile.delete();
                         chunks.remove(chunk);
-                        notifyChunkCorrupted(chunk);
-                    } catch (IOException e) {
-                        logger.error("Unable to connect to controller");
-                    } finally {
-                        chunkMapLock.unlock();
+                        try {
+                            notifyChunkCorrupted(chunk);
+                        } catch (IOException e) {
+                            logger.error("Unable to connect to controller");
+                        }
                     }
                 }
+            } finally {
+                chunkMapLock.unlock();
             }
 
             // We might have removed all known chunks of a file

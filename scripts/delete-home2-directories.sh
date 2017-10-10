@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-for i in `seq -w 1 24`
+for node in `./remote-show-online-bass-machines.sh`
 do
-echo bass${i}
-ssh bass${i} 'bash -s' << 'ENDSSH'
+echo $node
+ssh $node 'bash -s' << 'ENDSSH'
 rm -rf /home2/mclement2/dfs*
 ENDSSH
 done

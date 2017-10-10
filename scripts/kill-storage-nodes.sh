@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-
-for i in `seq -w 1 24`
+for node in `./remote-show-online-bass-machines.sh` 
 do
-echo bass${i}
-ssh bass${i} './kill-storage-node.sh'
+echo $node
+ssh $node './kill-storage-node.sh'
 done

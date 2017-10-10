@@ -41,7 +41,7 @@ class MessageProcessor implements Runnable {
                     logger.trace("Incoming null message from " + socket.getRemoteSocketAddress());
                     nullMessageCount++;
                     if (nullMessageCount == 50) {
-                        logger.error("Too many null messages in a row from " + socket.getRemoteSocketAddress() + ". Closing socket.");
+                        logger.trace("Too many null messages in a row from " + socket.getRemoteSocketAddress() + ". Closing socket.");
                         socket.close();
                         return;
                     } else {

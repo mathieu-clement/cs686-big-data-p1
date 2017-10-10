@@ -33,6 +33,7 @@ public class ChunkCorruptionMonitor implements Runnable {
         while (true) {
             chunkMapLock.lock();
             try {
+                logger.debug("Checking for corrupted files...");
                 for (SortedSet<Chunk> chunks : chunkMap.values()) {
                     List<Chunk> corruptedChunks = new ArrayList<>();
                     for (Chunk chunk : chunks) {

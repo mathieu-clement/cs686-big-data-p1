@@ -56,7 +56,7 @@ class MessageProcessor implements Runnable {
                     nullMessageCount++;
                     logger.trace("Incoming null message");
                     if (nullMessageCount == 10) {
-                        logger.error("Too many null messages. Closing socket");
+                        logger.trace("Too many null messages. Closing socket");
                         socket.close();
                         return;
                     } else {
@@ -85,7 +85,7 @@ class MessageProcessor implements Runnable {
                 logger.error("Error while parsing message or other IO error", e);
                 countExceptions++;
                 if (countExceptions == 50) {
-                    logger.error("Something is very wrong here. Too many problems when reading messages. Exiting.");
+                    logger.trace("Something is very wrong here. Too many problems when reading messages. Exiting.");
                     System.exit(1);
                 }
             }

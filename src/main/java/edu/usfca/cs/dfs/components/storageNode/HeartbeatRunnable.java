@@ -123,9 +123,10 @@ class HeartbeatRunnable implements Runnable {
     private Map<String, SortedSet<Chunk>> getDiff(final Map<String, SortedSet<Chunk>> oldChunkMap, final Map<String, SortedSet<Chunk>> newChunkMap) {
         Map<String, SortedSet<Chunk>> diff = new HashMap<>();
         for (Map.Entry<String, SortedSet<Chunk>> entry : newChunkMap.entrySet()) {
-            if (!oldChunkMap.containsKey(entry.getKey())) {
+            if (!oldChunkMap.containsKey(entry.getKey()) && !entry.getValue().isEmpty()) {
                 diff.put(entry.getKey(), entry.getValue());
             } else {
+
                 SortedSet<Chunk> oldChunks = oldChunkMap.get(entry.getKey());
                 SortedSet<Chunk> newChunks = new TreeSet<>();
                 for (Chunk chunk : entry.getValue()) {
@@ -133,7 +134,9 @@ class HeartbeatRunnable implements Runnable {
                         newChunks.add(chunk);
                     }
                 }
-                diff.put(entry.getKey(), newChunks);
+                if (!newChunks.isEmpty()) {
+                    diff.put(entry.getKey(), newChunks);
+                }
             }
         }
         return diff;

@@ -33,7 +33,7 @@ class MessageProcessor implements Runnable {
     private final Lock chunksLock;
     private final Map<ComponentAddress, Socket> storageNodeSockets = new HashMap<>();
 
-    public MessageProcessor(Socket socket, Map<String, SortedSet<Chunk>> chunks, Lock chunksLock, ComponentAddress storageNode) {
+    public MessageProcessor(Socket socket, Map<String, SortedSet<Chunk>> chunks, Lock chunksLock) {
         logger.trace("Starting Message Processor, thread " + Thread.currentThread().getName());
         this.socket = socket;
         this.chunks = chunks;

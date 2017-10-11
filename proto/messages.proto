@@ -1,6 +1,8 @@
 syntax = "proto3";
 option java_package = "edu.usfca.cs.dfs.messages";
 
+// Client to SN
+// SN to SN
 message StoreChunk {
     string fileName = 1;
     int32 sequenceNo = 2;
@@ -8,29 +10,30 @@ message StoreChunk {
     bytes data = 4;
 }
 
+// SN to Client
 message DownloadChunk {
     string filename = 1;
     int32 sequenceNo = 2;
 }
 
+// Client to Controller
 message DownloadFile {
     string fileName = 1;
 }
 
-message UploadFile {
-    string fileName = 1;
-}
-
+// Used as data structure
 message FileChunk {
     string filename = 1;
     int32 sequenceNo = 2;
 }
 
+// Used as data structure
 message FileChunks {
     string filename = 1;
     repeated int32 sequenceNos = 2;
 }
 
+// SN to Controller
 message Heartbeat {
     string storageNodeHost = 1;
     int32 storageNodePort = 2;
@@ -38,19 +41,23 @@ message Heartbeat {
     repeated FileChunks fileChunks = 3;
 }
 
+// Controller to SN
 message HeartbeatAck {
 
 }
 
+// Client to Controller
 message GetStorageNodesRequest {
 
 }
 
+// Used as data structure
 message StorageNode {
     string host = 1;
     int32 port = 2;
 }
 
+// Controller to Client
 message GetStorageNodesResponse {
     repeated StorageNode nodes = 4;
 }
@@ -61,6 +68,7 @@ message OrderSendChunk {
     FileChunk fileChunk = 2;
 }
 
+// Controller to Client
 message DownloadFileResponse {
     string filename = 1;
     message ChunkLocation {
@@ -70,34 +78,46 @@ message DownloadFileResponse {
     repeated ChunkLocation chunkLocations = 2;
 }
 
+// Client, Controller, Storage Node to anybody
 message Error {
     string text = 1;
 }
 
+// Client to Controller
 message GetFilesRequest {
 
 }
 
+// Controller to Client
 message GetFilesResponse {
     repeated DownloadFileResponse files = 1;
 }
 
+// Controller to Storage Node
 message GetStorageNodeFilesRequest {
 
 }
 
+// Storage Node to Controller
 message GetStorageNodeFilesResponse {
     repeated FileChunks files = 1;
 }
 
+// Client to Controller
+// AND
+// Controller to Storage Node
 message GetFreeSpaceRequest {
 
 }
 
+// Controller to Client
+// AND
+// Storage Node to Controller
 message GetFreeSpaceResponse {
     int64 freeSpace = 1;
 }
 
+// Storage Node to Controller
 message ChunkCorrupted {
     string filename = 1;
     int32 sequenceNo = 2;
@@ -109,7 +129,7 @@ message MessageWrapper {
         StoreChunk storeChunkMsg = 1;
         DownloadChunk downloadChunkMsg = 2;
         DownloadFile downloadFileMsg = 3;
-        UploadFile uploadFileMsg = 4;
+        // = 4 unused
         Heartbeat heartbeatMsg = 5;
         GetStorageNodesRequest getStoragesNodesRequestMsg = 6;
         GetStorageNodesResponse getStorageNodesResponseMsg = 7;

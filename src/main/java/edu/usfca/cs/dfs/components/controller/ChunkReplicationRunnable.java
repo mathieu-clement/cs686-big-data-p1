@@ -64,29 +64,33 @@ public class ChunkReplicationRunnable implements Runnable {
             }
 
             for (ComponentAddress additionalNode : additionalNodes) {
-                Messages.OrderSendChunk internalMsg = Messages.OrderSendChunk.newBuilder()
-                        .setStorageNode(
-                                Messages.StorageNode.newBuilder()
-                                        .setHost(additionalNode.getHost())
-                                        .setPort(additionalNode.getPort())
-                                        .build()
-                        )
-                        .setFileChunk(
-                                Messages.FileChunk.newBuilder()
-                                        .setFilename(chunk.getFilename())
-                                        .setSequenceNo(chunk.getSequenceNo())
-                                        .build()
-                        )
-                        .build();
-                Messages.MessageWrapper msg = Messages.MessageWrapper.newBuilder()
-                        .setOrderSendChunkMsg(internalMsg)
-                        .build();
-
+                Messages.MessageWrapper msg = buildOrderChunkMsg(chunk, additionalNode);
                 ComponentAddress senderNode = Utils.chooseNrandomOrMin(1, chunk.getReplicaLocations()).iterator().next();
                 logger.debug("Telling " + senderNode + " to transfer " + chunk + " to " + additionalNode);
                 messageQueues.get(senderNode).queue(msg);
             }
         }
 
+    }
+
+    private Messages.MessageWrapper buildOrderChunkMsg(ChunkRef chunk, ComponentAddress additionalNode) {
+        return Messages.MessageWrapper.newBuilder()
+                .setOrderSendChunkMsg(
+                        Messages.OrderSendChunk.newBuilder()
+                                .setStorageNode(
+                                        Messages.StorageNode.newBuilder()
+                                                .setHost(additionalNode.getHost())
+                                                .setPort(additionalNode.getPort())
+                                                .build()
+                                )
+                                .setFileChunk(
+                                        Messages.FileChunk.newBuilder()
+                                                .setFilename(chunk.getFilename())
+                                                .setSequenceNo(chunk.getSequenceNo())
+                                                .build()
+                                )
+                                .build()
+                )
+                .build();
     }
 }

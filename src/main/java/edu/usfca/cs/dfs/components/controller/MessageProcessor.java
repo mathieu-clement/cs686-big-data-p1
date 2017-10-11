@@ -147,15 +147,20 @@ class MessageProcessor implements Runnable {
                     .build()
                     .writeDelimitedTo(socket.getOutputStream());
 
-            Messages.MessageWrapper responseMsgWrapper = Messages.MessageWrapper.parseDelimitedFrom(socket.getInputStream());
-            if (!responseMsgWrapper.hasGetFreeSpaceResponseMsg()) {
-                throw new IllegalStateException("Expected get free space response message, but got: " + responseMsgWrapper);
-            }
-            freeSpace = responseMsgWrapper.getGetFreeSpaceResponseMsg().getFreeSpace();
+            Messages.GetFreeSpaceResponse resp = receiveFreeSpaceResponse(socket);
+            freeSpace = resp.getFreeSpace();
 
             socket.close();
 
             return freeSpace;
+        }
+
+        private Messages.GetFreeSpaceResponse receiveFreeSpaceResponse(Socket socket) throws IOException {
+            Messages.MessageWrapper responseMsgWrapper = Messages.MessageWrapper.parseDelimitedFrom(socket.getInputStream());
+            if (!responseMsgWrapper.hasGetFreeSpaceResponseMsg()) {
+                throw new IllegalStateException("Expected get free space response message, but got: " + responseMsgWrapper);
+            }
+            return responseMsgWrapper.getGetFreeSpaceResponseMsg();
         }
     }
 

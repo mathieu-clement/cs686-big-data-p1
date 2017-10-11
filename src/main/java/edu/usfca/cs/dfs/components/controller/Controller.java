@@ -51,11 +51,7 @@ public class Controller {
             StorageNodeAddressService storageNodeAddressService = new StorageNodeAddressService();
             new Thread(new MessageProcessor(storageNodeAddressService, onlineStorageNodes, heartbeats, messageQueues, fileTable, socket)).start();
 
-            // Though it will work fine without it, sleeping for a while will avoid the message sender
-            // to run into a race condition where the message queue doesn't exist yet because we have not
-            // parsed the heartbeat to figure out the hostname and port of the storage node.
-            // This avoids an error to be displayed every time a storage node gets online.
-            Thread.sleep(1000);
+            Thread.sleep(1000); // avoid race condition (would have no effect besides warning message)
             new Thread(new MessageSender(storageNodeAddressService, messageQueues)).start();
         }
     }

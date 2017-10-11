@@ -12,7 +12,6 @@ import java.util.concurrent.*;
 
 class MessageProcessor implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(MessageProcessor.class);
-    private static final Random random = new Random();
     private final Map<ComponentAddress, MessageFifoQueue> messageQueues;
     private final Set<ComponentAddress> onlineStorageNodes;
     private final Map<ComponentAddress, Date> heartbeats;
@@ -308,8 +307,7 @@ class MessageProcessor implements Runnable {
         // since last time
 
         // Exceptionally we'll open a new socket, but close it immediately afterward.
-        Socket storageNodeSocket = storageNode.getSocket();
-        try {
+        try (Socket storageNodeSocket = storageNode.getSocket()) {
             logger.debug("Asking " + storageNode + " for complete list of files");
             Messages.MessageWrapper.newBuilder()
                     .setGetStorageNodeFilesRequest(Messages.GetStorageNodeFilesRequest.newBuilder().build())
@@ -325,8 +323,6 @@ class MessageProcessor implements Runnable {
                         storageNode);
                 logger.debug("Got back the complete list of files from " + storageNode + ": " + fileChunks);
             }
-        } finally {
-            storageNodeSocket.close();
         }
     }
 

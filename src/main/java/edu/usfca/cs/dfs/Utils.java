@@ -65,7 +65,7 @@ public class Utils {
 
     public static void checkSum(File file, String expectedChecksum) throws IOException, ChecksumException {
         String actualChecksum = Utils.md5sum(file);
-        if (!actualChecksum.equals(expectedChecksum)) {
+        if (actualChecksum == null || !actualChecksum.equals(expectedChecksum)) {
             throw new ChecksumException(file, expectedChecksum, actualChecksum);
         }
     }

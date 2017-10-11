@@ -178,14 +178,11 @@ public class Client {
         }
     }
 
-    private static SortedSet<Chunk> downloadChunks(String filename, Messages.DownloadFileResponse downloadFileResponseMsg) throws IOException, ExecutionException, InterruptedException {
+    private static SortedSet<Chunk> downloadChunks(String filename, Messages.DownloadFileResponse downloadFileResponseMsg) throws ExecutionException, InterruptedException {
 
         int nThreads = DFSProperties.getInstance().getClientParallelDownloads();
         ExecutorService executor = Executors.newFixedThreadPool(nThreads);
 
-        // Each Thread gets its own socket
-        // Key is thread ID + storage node
-        Map<ThreadStorageNodeKey, Socket> sockets = new HashMap<>();
         List<DownloadChunkTask> tasks = new ArrayList<>();
 
         Map<Integer, List<ComponentAddress>> chunkLocations = parseChunkLocations(downloadFileResponseMsg);
@@ -193,7 +190,7 @@ public class Client {
             int sequenceNo = entry.getKey();
             List<ComponentAddress> nodes = entry.getValue();
 
-            DownloadChunkTask task = new DownloadChunkTask(filename, sequenceNo, nodes, sockets);
+            DownloadChunkTask task = new DownloadChunkTask(filename, sequenceNo, nodes);
             tasks.add(task);
             executor.submit(task);
         }
@@ -206,10 +203,6 @@ public class Client {
 
             for (int sequenceNo : chunkLocations.keySet()) {
                 chunks.add(futures.get(sequenceNo).get());
-            }
-
-            for (Socket socket : sockets.values()) {
-                socket.close();
             }
         } finally {
 
@@ -268,30 +261,6 @@ public class Client {
         return toComponentAddresses(responseMsg.getNodesList());
     }
 
-    private static class ThreadStorageNodeKey {
-        private final long threadId;
-        private final ComponentAddress storageNode;
-
-        public ThreadStorageNodeKey(long threadId, ComponentAddress storageNode) {
-            this.threadId = threadId;
-            this.storageNode = storageNode;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            ThreadStorageNodeKey that = (ThreadStorageNodeKey) o;
-            return threadId == that.threadId &&
-                    Objects.equals(storageNode, that.storageNode);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(threadId, storageNode);
-        }
-    }
-
     private static Chunk processStoreChunkMsg(Messages.MessageWrapper msgWrapper) throws IOException {
         Messages.StoreChunk storeChunkMsg
                 = msgWrapper.getStoreChunkMsg();
@@ -326,7 +295,7 @@ public class Client {
         return new Chunk(storeChunkMsg.getFileName(), storeChunkMsg.getSequenceNo(), Files.size(chunkFilePath), storeChunkMsg.getChecksum(), chunkFilePath);
     }
 
-    private static void sendFile(String filename, ComponentAddress controllerAddr) throws IOException, InterruptedException {
+    private static void sendFile(String filename, ComponentAddress controllerAddr) throws IOException {
 
         List<ComponentAddress> storageNodeAddresses = fetchStorageNodes(controllerAddr);
 
@@ -412,7 +381,7 @@ public class Client {
         private final int sequenceNo;
         private final List<ComponentAddress> storageNodes;
 
-        public DownloadChunkTask(String filename, int sequenceNo, List<ComponentAddress> storageNodes, Map<ThreadStorageNodeKey, Socket> sockets) throws IOException {
+        public DownloadChunkTask(String filename, int sequenceNo, List<ComponentAddress> storageNodes) {
             this.filename = filename;
             this.sequenceNo = sequenceNo;
             this.storageNodes = storageNodes;

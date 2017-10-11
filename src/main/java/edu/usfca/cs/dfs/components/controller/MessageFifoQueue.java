@@ -25,7 +25,7 @@ public class MessageFifoQueue {
      * Get next, waiting until available
      *
      * @return oldest message in queue
-     * @throws InterruptedException
+     * @throws InterruptedException in case of synchronization issues
      */
     public Messages.MessageWrapper next() throws InterruptedException {
         do {
@@ -33,10 +33,13 @@ public class MessageFifoQueue {
         } while (messages.size() == 0);
 
         listLock.lock();
-        Messages.MessageWrapper msg = messages.get(0);
-        messages.remove(0);
-        listLock.unlock();
-        return msg;
+        try {
+            Messages.MessageWrapper msg = messages.get(0);
+            messages.remove(0);
+            return msg;
+        } finally {
+            listLock.unlock();
+        }
     }
 
 }

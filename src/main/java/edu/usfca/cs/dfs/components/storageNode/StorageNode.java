@@ -30,8 +30,6 @@ public class StorageNode {
 
     private final static Logger logger = LoggerFactory.getLogger(StorageNode.class);
 
-    private ServerSocket srvSocket;
-
     private final int port;
     private final ComponentAddress controllerAddr;
 
@@ -135,7 +133,7 @@ public class StorageNode {
 
         new Thread(new ChunkCorruptionMonitor(myAddr, chunks, chunksLock, controllerAddr)).start();
 
-        srvSocket = new ServerSocket(port);
+        ServerSocket srvSocket = new ServerSocket(port);
         logger.debug("Listening on port " + port + "...");
         while (true) {
             Socket socket = srvSocket.accept();

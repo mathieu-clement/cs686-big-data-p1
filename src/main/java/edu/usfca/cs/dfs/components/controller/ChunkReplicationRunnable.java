@@ -7,7 +7,6 @@ import edu.usfca.cs.dfs.structures.ComponentAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -44,12 +43,10 @@ public class ChunkReplicationRunnable implements Runnable {
             }
         } catch (InterruptedException e) {
             logger.error("Thread interrupted", e);
-        } catch (IOException e) {
-            logger.error("Error sending message to storage node / writing to socket", e);
         }
     }
 
-    private void orderMoreReplicas(List<ChunkRef> underReplicatedChunks) throws IOException {
+    private void orderMoreReplicas(List<ChunkRef> underReplicatedChunks) {
         int minReplicas = DFSProperties.getInstance().getMinReplicas();
         for (ChunkRef chunk : underReplicatedChunks) {
             Set<ComponentAddress> unusedStorageNodes = new HashSet<>(storageNodes);

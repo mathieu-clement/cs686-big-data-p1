@@ -73,38 +73,44 @@ public class Client {
     private static void freeSpace(ComponentAddress controllerAddr) throws IOException {
         Socket socket = controllerAddr.getSocket();
 
-        Messages.MessageWrapper.newBuilder()
-                .setGetFreeSpaceRequestMsg(Messages.GetFreeSpaceRequest.newBuilder().build())
-                .build()
-                .writeDelimitedTo(socket.getOutputStream());
+        sendGetFreeSpaceRequest(socket);
 
+        Messages.GetFreeSpaceResponse msg = receiveGetFreeSpaceResponse(socket);
+        long freeSpace = msg.getFreeSpace();
+        double gigabytes = freeSpace / 1e9;
+        gigabytes = roundTo2Decimals(gigabytes);
+        double gibibytes = freeSpace / 1024.0 / 1024.0 / 1024.0;
+        gibibytes = roundTo2Decimals(gibibytes);
+        System.out.println("Free space on DFS: " + gigabytes + " GB (" + gibibytes + " GiB)");
+    }
+
+    private static double roundTo2Decimals(double d) {
+        return ((int) Math.round(100 * d)) / 100.0;
+    }
+
+    private static Messages.GetFreeSpaceResponse receiveGetFreeSpaceResponse(Socket socket) throws IOException {
         Messages.MessageWrapper responseMsgWrapper = Messages.MessageWrapper.parseDelimitedFrom(socket.getInputStream());
         if (!responseMsgWrapper.hasGetFreeSpaceResponseMsg()) {
             throw new IllegalStateException("Expected get free space response message, but got: " + responseMsgWrapper);
         }
-        long freeSpace = responseMsgWrapper.getGetFreeSpaceResponseMsg().getFreeSpace();
-        double gigabytes = freeSpace / 1e9;
-        gigabytes = ((int) Math.round(100 * gigabytes)) / 100.0; // round to two decimals
-        double gibibytes = freeSpace / 1024.0 / 1024.0 / 1024.0;
-        gibibytes = ((int) Math.round(100 * gibibytes)) / 100.0; // round to two decimals
-        System.out.println("Free space on DFS: " + gigabytes + " GB (" + gibibytes + " GiB)");
+        return responseMsgWrapper.getGetFreeSpaceResponseMsg();
+    }
+
+    private static void sendGetFreeSpaceRequest(Socket socket) throws IOException {
+        Messages.MessageWrapper.newBuilder()
+                .setGetFreeSpaceRequestMsg(Messages.GetFreeSpaceRequest.newBuilder().build())
+                .build()
+                .writeDelimitedTo(socket.getOutputStream());
     }
 
     private static void listFiles(ComponentAddress controllerAddr, boolean filenamesOnly) throws IOException {
         Socket socket = controllerAddr.getSocket();
 
         // Send request
-        Messages.MessageWrapper.newBuilder()
-                .setGetFilesRequestMsg(Messages.GetFilesRequest.newBuilder().build())
-                .build()
-                .writeDelimitedTo(socket.getOutputStream());
+        sendGetFilesRequest(socket);
 
         // Get response
-        Messages.MessageWrapper msgWrapper = Messages.MessageWrapper.parseDelimitedFrom(socket.getInputStream());
-        if (!msgWrapper.hasGetFilesResponseMsg()) {
-            throw new IllegalStateException("Expected GetFilesResponse message, got: " + msgWrapper);
-        }
-        Messages.GetFilesResponse msg = msgWrapper.getGetFilesResponseMsg();
+        Messages.GetFilesResponse msg = receiveGetFilesResponse(socket);
 
         for (Messages.DownloadFileResponse downloadFileResponse : msg.getFilesList()) {
             String filename = downloadFileResponse.getFilename();
@@ -123,6 +129,21 @@ public class Client {
             }
             System.out.println();
         }
+    }
+
+    private static Messages.GetFilesResponse receiveGetFilesResponse(Socket socket) throws IOException {
+        Messages.MessageWrapper msgWrapper = Messages.MessageWrapper.parseDelimitedFrom(socket.getInputStream());
+        if (!msgWrapper.hasGetFilesResponseMsg()) {
+            throw new IllegalStateException("Expected GetFilesResponse message, got: " + msgWrapper);
+        }
+        return msgWrapper.getGetFilesResponseMsg();
+    }
+
+    private static void sendGetFilesRequest(Socket socket) throws IOException {
+        Messages.MessageWrapper.newBuilder()
+                .setGetFilesRequestMsg(Messages.GetFilesRequest.newBuilder().build())
+                .build()
+                .writeDelimitedTo(socket.getOutputStream());
     }
 
     private static void listStorageNodes(ComponentAddress controllerAddr) throws IOException {
@@ -145,22 +166,11 @@ public class Client {
     }
 
     private static void downloadFile(ComponentAddress controllerAddr, String filename) throws IOException, ExecutionException, InterruptedException {
-        Messages.MessageWrapper msg = Messages.MessageWrapper.newBuilder()
-                .setDownloadFileMsg(
-                        Messages.DownloadFile.newBuilder()
-                                .setFileName(filename)
-                                .build()
-                )
-                .build();
         Socket controllerSocket = controllerAddr.getSocket();
         logger.info("Asking controller " + controllerAddr + " about file " + filename);
-        msg.writeDelimitedTo(controllerSocket.getOutputStream());
+        sendDownloadFileMsg(filename, controllerSocket);
 
-        Messages.MessageWrapper msgWrapper = Messages.MessageWrapper.parseDelimitedFrom(controllerSocket.getInputStream());
-        if (!msgWrapper.hasDownloadFileResponseMsg()) {
-            throw new IllegalStateException("Controller is supposed to give back the DownloadFileResponse but got " + msgWrapper);
-        }
-        Messages.DownloadFileResponse downloadFileResponseMsg = msgWrapper.getDownloadFileResponseMsg();
+        Messages.DownloadFileResponse downloadFileResponseMsg = receiveDownloadFileResponse(controllerSocket);
 
         SortedSet<Chunk> chunks = downloadChunks(filename, downloadFileResponseMsg);
 
@@ -168,7 +178,7 @@ public class Client {
         File file = Chunk.createFileFromChunks(chunks, filename);
         long bytes = Files.size(file.toPath());
         double megabytes = bytes / 1e6;
-        megabytes = ((int) Math.round(100 * megabytes)) / 100.0; // round to two decimals
+        megabytes = roundTo2Decimals(megabytes); // round to two decimals
         logger.info("File assembled. Size: " + megabytes + " MB");
 
         // Cleanup
@@ -176,6 +186,25 @@ public class Client {
         for (Chunk chunk : chunks) {
             chunk.getChunkLocalPath().toFile().delete();
         }
+    }
+
+    private static Messages.DownloadFileResponse receiveDownloadFileResponse(Socket controllerSocket) throws IOException {
+        Messages.MessageWrapper msgWrapper = Messages.MessageWrapper.parseDelimitedFrom(controllerSocket.getInputStream());
+        if (!msgWrapper.hasDownloadFileResponseMsg()) {
+            throw new IllegalStateException("Controller is supposed to give back the DownloadFileResponse but got " + msgWrapper);
+        }
+        return msgWrapper.getDownloadFileResponseMsg();
+    }
+
+    private static void sendDownloadFileMsg(String filename, Socket controllerSocket) throws IOException {
+        Messages.MessageWrapper msg = Messages.MessageWrapper.newBuilder()
+                .setDownloadFileMsg(
+                        Messages.DownloadFile.newBuilder()
+                                .setFileName(filename)
+                                .build()
+                )
+                .build();
+        msg.writeDelimitedTo(controllerSocket.getOutputStream());
     }
 
     private static SortedSet<Chunk> downloadChunks(String filename, Messages.DownloadFileResponse downloadFileResponseMsg) throws ExecutionException, InterruptedException {
@@ -223,15 +252,7 @@ public class Client {
     }
 
     private static Chunk downloadChunk(String filename, int sequenceNo, Socket socket) throws IOException {
-        Messages.MessageWrapper requestMsg = Messages.MessageWrapper.newBuilder()
-                .setDownloadChunkMsg(
-                        Messages.DownloadChunk.newBuilder()
-                                .setFilename(filename)
-                                .setSequenceNo(sequenceNo)
-                                .build()
-                )
-                .build();
-        requestMsg.writeDelimitedTo(socket.getOutputStream());
+        sendDownloadChunkRequest(filename, sequenceNo, socket);
 
         Messages.MessageWrapper msgWrapper = Messages.MessageWrapper.parseDelimitedFrom(socket.getInputStream());
         if (!msgWrapper.hasStoreChunkMsg()) {
@@ -241,24 +262,43 @@ public class Client {
         return processStoreChunkMsg(msgWrapper);
     }
 
+    private static void sendDownloadChunkRequest(String filename, int sequenceNo, Socket socket) throws IOException {
+        Messages.MessageWrapper requestMsg = Messages.MessageWrapper.newBuilder()
+                .setDownloadChunkMsg(
+                        Messages.DownloadChunk.newBuilder()
+                                .setFilename(filename)
+                                .setSequenceNo(sequenceNo)
+                                .build()
+                )
+                .build();
+        requestMsg.writeDelimitedTo(socket.getOutputStream());
+    }
+
     public static List<ComponentAddress> fetchStorageNodes(ComponentAddress controllerAddr) throws IOException {
         Socket socket = controllerAddr.getSocket();
-        Messages.GetStorageNodesRequest storageNodesRequestMsg = Messages.GetStorageNodesRequest.newBuilder().build();
-        Messages.MessageWrapper sentMsgWrapper = Messages.MessageWrapper.newBuilder()
-                .setGetStoragesNodesRequestMsg(storageNodesRequestMsg)
-                .build();
-
         logger.debug("Asking for list of storage nodes...");
-        sentMsgWrapper.writeDelimitedTo(socket.getOutputStream());
+        sendGetStorageNodesRequest(socket);
 
         logger.debug("Waiting for list of storage nodes...");
+        Messages.GetStorageNodesResponse responseMsg = receiveGetStorageNodesResponse(socket);
+
+        return toComponentAddresses(responseMsg.getNodesList());
+    }
+
+    private static Messages.GetStorageNodesResponse receiveGetStorageNodesResponse(Socket socket) throws IOException {
         Messages.MessageWrapper receivedMsgWrapper = Messages.MessageWrapper.parseDelimitedFrom(socket.getInputStream());
         if (!receivedMsgWrapper.hasGetStorageNodesResponseMsg()) {
             throw new UnsupportedOperationException("Expected storage node list response, but got something else.");
         }
-        Messages.GetStorageNodesResponse responseMsg = receivedMsgWrapper.getGetStorageNodesResponseMsg();
+        return receivedMsgWrapper.getGetStorageNodesResponseMsg();
+    }
 
-        return toComponentAddresses(responseMsg.getNodesList());
+    private static void sendGetStorageNodesRequest(Socket socket) throws IOException {
+        Messages.GetStorageNodesRequest storageNodesRequestMsg = Messages.GetStorageNodesRequest.newBuilder().build();
+        Messages.MessageWrapper sentMsgWrapper = Messages.MessageWrapper.newBuilder()
+                .setGetStoragesNodesRequestMsg(storageNodesRequestMsg)
+                .build();
+        sentMsgWrapper.writeDelimitedTo(socket.getOutputStream());
     }
 
     private static Chunk processStoreChunkMsg(Messages.MessageWrapper msgWrapper) throws IOException {
@@ -323,20 +363,7 @@ public class Client {
             ByteString data = ByteString.readFrom(fis);
             fis.close();
 
-            Messages.StoreChunk storeChunkMsg
-                    = Messages.StoreChunk.newBuilder()
-                    .setFileName(chunk.getFilename())
-                    .setSequenceNo(chunk.getSequenceNo())
-                    .setChecksum(chunk.getChecksum())
-                    .setData(data)
-                    .build();
-
-            Messages.MessageWrapper msgWrapper =
-                    Messages.MessageWrapper.newBuilder()
-                            .setStoreChunkMsg(storeChunkMsg)
-                            .build();
-
-            msgWrapper.writeDelimitedTo(socket.getOutputStream());
+            sendStoreChunkMsg(chunk, data, socket);
 
             logger.debug("Close connection to storage node " + storageNodeAddr.getHost());
             logger.debug("Deleting chunk file " + chunkFile.getName());
@@ -345,6 +372,20 @@ public class Client {
             }
             socket.close();
         }
+    }
+
+    private static void sendStoreChunkMsg(Chunk chunk, ByteString data, Socket socket) throws IOException {
+        Messages.MessageWrapper.newBuilder()
+                .setStoreChunkMsg(
+                        Messages.StoreChunk.newBuilder()
+                                .setFileName(chunk.getFilename())
+                                .setSequenceNo(chunk.getSequenceNo())
+                                .setChecksum(chunk.getChecksum())
+                                .setData(data)
+                                .build()
+                )
+                .build()
+                .writeDelimitedTo(socket.getOutputStream());
     }
 
     private static Map<Integer, List<ComponentAddress>> parseChunkLocations(Messages.DownloadFileResponse downloadFileResponseMsg) {
@@ -375,6 +416,18 @@ public class Client {
         System.err.println(sb.toString());
     }
 
+    static List<ComponentAddress> toComponentAddresses(List<Messages.StorageNode> list) {
+        List<ComponentAddress> addresses = new ArrayList<>(list.size());
+        for (Messages.StorageNode storageNode : list) {
+            addresses.add(toComponentAddress(storageNode));
+        }
+        return addresses;
+    }
+
+    private static ComponentAddress toComponentAddress(Messages.StorageNode node) {
+        return new ComponentAddress(node.getHost(), node.getPort());
+    }
+
     private static class DownloadChunkTask implements Callable<Chunk> {
 
         private final String filename;
@@ -398,18 +451,6 @@ public class Client {
             }
             throw new ConnectException("Couldn't retrieve one good chunk (correct checksum) or connect to any of: " + storageNodes);
         }
-    }
-
-    static List<ComponentAddress> toComponentAddresses(List<Messages.StorageNode> list) {
-        List<ComponentAddress> addresses = new ArrayList<>(list.size());
-        for (Messages.StorageNode storageNode : list) {
-            addresses.add(toComponentAddress(storageNode));
-        }
-        return addresses;
-    }
-
-    private static ComponentAddress toComponentAddress(Messages.StorageNode node) {
-        return new ComponentAddress(node.getHost(), node.getPort());
     }
 
 }

@@ -3,6 +3,7 @@ option java_package = "edu.usfca.cs.dfs.messages";
 
 // Client to SN
 // SN to SN
+// SN to Client
 message StoreChunk {
     string fileName = 1;
     int32 sequenceNo = 2;
@@ -10,7 +11,7 @@ message StoreChunk {
     bytes data = 4;
 }
 
-// SN to Client
+// Client to SN
 message DownloadChunk {
     string filename = 1;
     int32 sequenceNo = 2;
